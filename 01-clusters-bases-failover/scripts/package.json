@@ -1,0 +1,14 @@
+{
+  "name": "oep-db-scripts",
+  "version": "1.0.0",
+  "description": "Database health check, connection test, and utility scripts for OEP Module 01",
+  "scripts": {
+    "health": "node health-check.js",
+    "test-mongo": "node test-mongo-connection.js",
+    "test-pg": "node test-postgres-connection.js"
+  },
+  "dependencies": {
+    "mongodb": "^6.3.0",
+    "pg": "^8.11.0"
+  }
+}
