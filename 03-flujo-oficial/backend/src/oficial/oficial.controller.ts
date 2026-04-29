@@ -3,10 +3,16 @@ import {
   UseInterceptors, UploadedFile, HttpCode,
   BadRequestException,
 } from '@nestjs/common';
+import type { Express } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { OficialService } from './oficial.service';
 import { okResponse, errResponse } from '../common/response.util';
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
 
 @Controller('oficial')
 export class OficialController {
@@ -26,7 +32,7 @@ export class OficialController {
       const result = await this.svc.importCsv(file.buffer, file.originalname, usuarioCarga, ipOrigen);
       return okResponse(result, 'CSV imported');
     } catch (e) {
-      return errResponse(e.message, 'CSV_IMPORT_ERROR');
+      return errResponse(errorMessage(e), 'CSV_IMPORT_ERROR');
     }
   }
 
@@ -45,7 +51,7 @@ export class OficialController {
       });
       return okResponse(result, 'Bulk actas processed');
     } catch (e) {
-      return errResponse(e.message, 'BULK_ACTAS_ERROR');
+      return errResponse(errorMessage(e), 'BULK_ACTAS_ERROR');
     }
   }
 
@@ -64,7 +70,7 @@ export class OficialController {
       );
       return okResponse(result, 'Actas retrieved');
     } catch (e) {
-      return errResponse(e.message, 'GET_ACTAS_ERROR');
+      return errResponse(errorMessage(e), 'GET_ACTAS_ERROR');
     }
   }
 
@@ -76,7 +82,7 @@ export class OficialController {
       if (!acta) return errResponse('Acta not found', 'NOT_FOUND');
       return okResponse(acta, 'Acta retrieved');
     } catch (e) {
-      return errResponse(e.message, 'GET_ACTA_ERROR');
+      return errResponse(errorMessage(e), 'GET_ACTA_ERROR');
     }
   }
 
@@ -87,7 +93,7 @@ export class OficialController {
       const data = await this.svc.getImportaciones();
       return okResponse(data, 'Importaciones retrieved');
     } catch (e) {
-      return errResponse(e.message, 'GET_IMPORTACIONES_ERROR');
+      return errResponse(errorMessage(e), 'GET_IMPORTACIONES_ERROR');
     }
   }
 
@@ -98,7 +104,7 @@ export class OficialController {
       const data = await this.svc.getAuditoria(parseInt(limit) || 100);
       return okResponse(data, 'Auditoria retrieved');
     } catch (e) {
-      return errResponse(e.message, 'GET_AUDITORIA_ERROR');
+      return errResponse(errorMessage(e), 'GET_AUDITORIA_ERROR');
     }
   }
 
@@ -109,7 +115,7 @@ export class OficialController {
       const data = await this.svc.getValidaciones(actaId ? parseInt(actaId) : undefined);
       return okResponse(data, 'Validaciones retrieved');
     } catch (e) {
-      return errResponse(e.message, 'GET_VALIDACIONES_ERROR');
+      return errResponse(errorMessage(e), 'GET_VALIDACIONES_ERROR');
     }
   }
 
@@ -120,7 +126,7 @@ export class OficialController {
       const data = await this.svc.getResumen();
       return okResponse(data, 'Resumen retrieved');
     } catch (e) {
-      return errResponse(e.message, 'GET_RESUMEN_ERROR');
+      return errResponse(errorMessage(e), 'GET_RESUMEN_ERROR');
     }
   }
 
@@ -132,7 +138,7 @@ export class OficialController {
       const result = await this.svc.compararRrv(body);
       return okResponse(result, 'RRV comparison completed');
     } catch (e) {
-      return errResponse(e.message, 'COMPARAR_RRV_ERROR');
+      return errResponse(errorMessage(e), 'COMPARAR_RRV_ERROR');
     }
   }
 }

@@ -2,10 +2,14 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Pool } from 'pg';
 import { DB_POOL } from '../database/database.module';
 import { dbQuery } from '../common/db.util';
+import { AuditoriaService } from '../auditoria/auditoria.service';
 
 @Injectable()
 export class CatalogosService {
-  constructor(@Inject(DB_POOL) private readonly pool: Pool) {}
+  constructor(
+    @Inject(DB_POOL) private readonly pool: Pool,
+    private readonly auditoria: AuditoriaService,
+  ) {}
 
   private async findOrCreateDept(nombre: string, codigoTerr: string): Promise<number> {
     let r = await dbQuery(this.pool, 'SELECT id FROM departamentos WHERE nombre = $1', [nombre]);
@@ -93,9 +97,17 @@ export class CatalogosService {
         );
         insertadas++;
       } catch (e) {
-        errores.push({ row, error: e.message });
+        errores.push({ row, error: e instanceof Error ? e.message : String(e) });
       }
     }
+
+    await this.auditoria.log(
+      'CATALOGO',
+      0,
+      'SISTEMA',
+      'IMPORTACION_TERRITORIO',
+      `Territorio: ${insertadas} insertadas, ${errores.length} errores`,
+    );
 
     return { total: rows.length, insertadas, errores };
   }
@@ -131,9 +143,17 @@ export class CatalogosService {
         );
         insertados++;
       } catch (e) {
-        errores.push({ row, error: e.message });
+        errores.push({ row, error: e instanceof Error ? e.message : String(e) });
       }
     }
+
+    await this.auditoria.log(
+      'CATALOGO',
+      0,
+      'SISTEMA',
+      'IMPORTACION_RECINTOS',
+      `Recintos: ${insertados} insertados, ${errores.length} errores`,
+    );
 
     return { total: rows.length, insertados, errores };
   }
@@ -170,9 +190,17 @@ export class CatalogosService {
         );
         insertadas++;
       } catch (e) {
-        errores.push({ row, error: e.message });
+        errores.push({ row, error: e instanceof Error ? e.message : String(e) });
       }
     }
+
+    await this.auditoria.log(
+      'CATALOGO',
+      0,
+      'SISTEMA',
+      'IMPORTACION_MESAS',
+      `Mesas: ${insertadas} insertadas, ${errores.length} errores`,
+    );
 
     return { total: rows.length, insertadas, errores };
   }

@@ -141,3 +141,62 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# ──────────────────────────────────────────────
+# Proyecto: Sistema Nacional de Cómputo Electoral
+# ──────────────────────────────────────────────
+
+# Claude Code / asistentes
+.claude/
+**/.claude/
+
+# IDE / Editores
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema operativo
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+
+# Builds de backend (NestJS) y frontend (Vite)
+**/dist/
+**/build/
+03-flujo-oficial/backend/dist/
+03-flujo-oficial/frontend/dist/
+
+# node_modules en cualquier subcarpeta del proyecto
+**/node_modules/
+
+# Datos locales de contenedores (volúmenes Docker bind-mount)
+**/pgdata/
+**/postgres-data/
+**/mongo-data/
+**/mongodb-data/
+**/redis-data/
+**/n8n-data/
+**/data/
+**/_data/
+
+# Archivos temporales de procesamiento (OCR / CSV / actas)
+**/tmp/
+**/temp/
+**/uploads/
+**/storage/local/
+
+# Backups y dumps
+*.sql.gz
+*.dump
+*.bak
+
+# Archivos sensibles adicionales
+*.pem
+*.key
+*.crt
+secrets/

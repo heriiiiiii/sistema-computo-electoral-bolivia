@@ -2,6 +2,11 @@ import { Controller, Post, Body, HttpCode } from '@nestjs/common';
 import { CatalogosService } from './catalogos.service';
 import { okResponse, errResponse } from '../common/response.util';
 
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message;
+  return String(err);
+}
+
 @Controller('oficial/catalogos')
 export class CatalogosController {
   constructor(private readonly svc: CatalogosService) {}
@@ -16,7 +21,7 @@ export class CatalogosController {
       const result = await this.svc.loadTerritorio(body.rows);
       return okResponse(result, 'Territory catalog loaded');
     } catch (e) {
-      return errResponse(e.message, 'TERRITORIO_ERROR');
+      return errResponse(errorMessage(e), 'TERRITORIO_ERROR');
     }
   }
 
@@ -30,7 +35,7 @@ export class CatalogosController {
       const result = await this.svc.loadRecintos(body.rows);
       return okResponse(result, 'Recintos catalog loaded');
     } catch (e) {
-      return errResponse(e.message, 'RECINTOS_ERROR');
+      return errResponse(errorMessage(e), 'RECINTOS_ERROR');
     }
   }
 
@@ -44,7 +49,7 @@ export class CatalogosController {
       const result = await this.svc.loadMesas(body.rows);
       return okResponse(result, 'Mesas catalog loaded');
     } catch (e) {
-      return errResponse(e.message, 'MESAS_ERROR');
+      return errResponse(errorMessage(e), 'MESAS_ERROR');
     }
   }
 }

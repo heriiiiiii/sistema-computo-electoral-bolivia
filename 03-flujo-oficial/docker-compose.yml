@@ -44,6 +44,18 @@ services:
       retries: 10
       start_period: 30s
 
+  # ── Web UI (React + Vite) ────────────────────────────────────────────────────
+  oficial-frontend:
+    build: ./frontend
+    container_name: oficial-frontend
+    restart: unless-stopped
+    ports:
+      - "5173:5173"
+    networks:
+      - oep-network
+    depends_on:
+      - oficial-backend
+
   # ── CSV Automation (runs once) ───────────────────────────────────────────────
   # Run manually after backend is healthy:
   #   docker compose run --rm csv-automation
