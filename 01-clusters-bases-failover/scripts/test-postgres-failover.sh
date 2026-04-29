@@ -2,7 +2,7 @@
 # =============================================================================
 #  test-postgres-failover.sh
 #  Guided End-to-End PostgreSQL Automatic Failover Test
-#  Sistema Nacional de Cómputo Electoral Bolivia — Módulo 01
+#  Sistema Nacional de CÃ³mputo Electoral Bolivia â€” MÃ³dulo 01
 #
 #  This script walks through a complete failover cycle:
 #    1. Verify initial cluster state
@@ -28,9 +28,9 @@ PG_DB="${PG_DB:-oep_oficial}"
 PRIMARY="${PRIMARY_CONTAINER:-postgres-primary}"
 REPLICA="${REPLICA_CONTAINER:-postgres-replica}"
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
+# â”€â”€ Helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
-hr()  { echo "──────────────────────────────────────────────────────────────────────"; }
+hr()  { echo "â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€"; }
 hrh() { echo "======================================================================"; }
 
 step() {
@@ -53,16 +53,16 @@ pg_exec() {
 }
 
 pg_query() {
-    # $1 = container, $2 = sql — returns trimmed single value
+    # $1 = container, $2 = sql â€” returns trimmed single value
     docker exec "$1" psql -U "$PG_USER" -d "$PG_DB" -tAq -c "$2" 2>/dev/null || echo "error"
 }
 
-# ── Intro ─────────────────────────────────────────────────────────────────────
+# â”€â”€ Intro â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 clear
 hrh
-echo "  PostgreSQL Automatic Failover — Guided Test"
-echo "  Sistema Nacional de Cómputo Electoral Bolivia — Módulo 01"
+echo "  PostgreSQL Automatic Failover â€” Guided Test"
+echo "  Sistema Nacional de CÃ³mputo Electoral Bolivia â€” MÃ³dulo 01"
 hrh
 echo ""
 echo "  This test demonstrates demo-level automatic PostgreSQL failover:"
@@ -76,7 +76,7 @@ echo "  NOTE: This is a demo/academic failover (Node.js monitor + pg_promote)."
 echo "        Production systems use Patroni, repmgr, or Pgpool-II."
 echo ""
 
-# ── Check prerequisites ───────────────────────────────────────────────────────
+# â”€â”€ Check prerequisites â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 echo "Checking prerequisites..."
 
@@ -95,7 +95,7 @@ echo "  OK: Both $PRIMARY and $REPLICA are running."
 
 pause
 
-# ── STEP 1: Verify initial cluster state ─────────────────────────────────────
+# â”€â”€ STEP 1: Verify initial cluster state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 step 1 "Verify initial cluster state"
 
@@ -123,7 +123,7 @@ echo "  pg_stat_replication should show 1 row with state = streaming"
 
 pause
 
-# ── STEP 2: Write test data before failover ───────────────────────────────────
+# â”€â”€ STEP 2: Write test data before failover â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 step 2 "Write test data to primary (will verify it survived failover)"
 
@@ -145,33 +145,33 @@ echo "Expected: the same row should appear on both nodes (WAL replication)."
 
 pause
 
-# ── STEP 3: Start the automatic monitor ──────────────────────────────────────
+# â”€â”€ STEP 3: Start the automatic monitor â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 step 3 "Start the automatic failover monitor (recommended for this test)"
 
 echo "The monitor checks $PRIMARY every 5 seconds."
 echo "After 3 consecutive failures it promotes $REPLICA automatically."
 echo ""
-echo "Option A — Docker Compose (preferred, stays running in background):"
+echo "Option A â€” Docker Compose (preferred, stays running in background):"
 hr
 echo "  docker compose --profile monitor up -d postgres-failover-monitor"
 echo "  docker logs -f postgres-failover-monitor"
 hr
 echo ""
-echo "Option B — Run directly from the scripts/ directory (host terminal):"
+echo "Option B â€” Run directly from the scripts/ directory (host terminal):"
 hr
 echo "  cd scripts && npm install"
 echo "  PG_REPLICA_PORT=5433 node postgres-failover-monitor.js"
 hr
 echo ""
-echo "Option C — Skip monitor and use manual promotion instead (Step 5b below)."
+echo "Option C â€” Skip monitor and use manual promotion instead (Step 5b below)."
 echo ""
 echo "If you want automatic failover, START THE MONITOR IN A SEPARATE TERMINAL"
 echo "now, then return here and press ENTER."
 
 pause
 
-# ── STEP 4: Simulate primary failure ─────────────────────────────────────────
+# â”€â”€ STEP 4: Simulate primary failure â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 step 4 "Simulate postgres-primary failure"
 
@@ -199,7 +199,7 @@ echo "  bash scripts/postgres-promote-replica.sh"
 
 pause
 
-# ── STEP 5: Wait for and verify promotion ────────────────────────────────────
+# â”€â”€ STEP 5: Wait for and verify promotion â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 step 5 "Verify postgres-replica is now PRIMARY"
 
@@ -211,7 +211,7 @@ for i in $(seq 1 12); do
     STATUS=$(pg_query "$REPLICA" "SELECT pg_is_in_recovery();")
     if [ "$STATUS" = "f" ]; then
         PROMOTED=true
-        echo "  Attempt $i: SUCCESS — $REPLICA is PRIMARY (pg_is_in_recovery() = false)"
+        echo "  Attempt $i: SUCCESS â€” $REPLICA is PRIMARY (pg_is_in_recovery() = false)"
         break
     elif [ "$STATUS" = "t" ]; then
         echo "  Attempt $i: $REPLICA still in standby mode (waiting for promotion)..."
@@ -243,7 +243,7 @@ fi
 
 pause
 
-# ── STEP 6: Write to new primary ─────────────────────────────────────────────
+# â”€â”€ STEP 6: Write to new primary â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 step 6 "Write to the new primary (postgres-replica)"
 
@@ -264,8 +264,8 @@ pg_exec "$REPLICA" \
 
 echo ""
 echo "Expected:"
-echo "  pre-failover-marker  — data that was written to the OLD primary before failure"
-echo "  post-failover-write  — data written to the NEW primary after promotion"
+echo "  pre-failover-marker  â€” data that was written to the OLD primary before failure"
+echo "  post-failover-write  â€” data written to the NEW primary after promotion"
 echo ""
 echo "Both rows confirm:"
 echo "  1. WAL replication preserved pre-failover data"
@@ -273,7 +273,7 @@ echo "  2. The new primary accepts writes successfully"
 
 pause
 
-# ── STEP 7: Summary and rejoin instructions ───────────────────────────────────
+# â”€â”€ STEP 7: Summary and rejoin instructions â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 step 7 "Summary and rejoin procedure for the old primary"
 
