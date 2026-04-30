@@ -1,12 +1,18 @@
+/**
+ * Dashboard API endpoints — apuntan al backend RRV.
+ *
+ * Prefijo:  /api/rrv/dashboard/*
+ * Servidor: http://localhost:4001 (via proxy en dev)
+ */
 export const DASHBOARD_ENDPOINTS = {
-  resumen: '/api/dashboard/resumen',
-  comparacion: '/api/dashboard/comparacion',
-  kpis: '/api/dashboard/kpis',
-  resultadosCandidatos: '/api/dashboard/resultados-candidatos',
-  estadoActas: '/api/dashboard/estado-actas',
-  inconsistencias: '/api/dashboard/inconsistencias',
-  geografico: '/api/dashboard/geografico',
-  metricasTecnicas: '/api/dashboard/metricas-tecnicas',
-  estadoClusters: '/api/dashboard/estado-clusters',
-  actasDigitalizadas: '/api/dashboard/actas-digitalizadas'
+  resumen: '/api/rrv/dashboard/resumen',
+  comparacion: '/api/rrv/dashboard/comparacion',
+  kpis: '/api/rrv/dashboard/kpis',
+  resultadosCandidatos: '/api/rrv/dashboard/resultados-candidatos',
+  estadoActas: '/api/rrv/dashboard/estado-actas',
+  inconsistencias: '/api/rrv/dashboard/inconsistencias',
+  geografico: '/api/rrv/dashboard/geografico',
+  metricasTecnicas: '/api/rrv/dashboard/metricas-tecnicas',
+  estadoClusters: '/api/rrv/dashboard/estado-clusters',
+  actasDigitalizadas: '/api/rrv/dashboard/actas-digitalizadas'
 } as const;

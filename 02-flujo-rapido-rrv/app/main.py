@@ -1,8 +1,9 @@
-﻿from fastapi import FastAPI
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.config.settings import APP_NAME
 from app.routes.health_routes import router as health_router
 from app.routes.rrv_routes import router as rrv_router
+from app.routes.dashboard_routes import router as dashboard_router
 
 app = FastAPI(title=APP_NAME)
 
@@ -16,6 +17,7 @@ app.add_middleware(
 
 app.include_router(health_router)
 app.include_router(rrv_router)
+app.include_router(dashboard_router)
 
 @app.get("/")
 def root():
