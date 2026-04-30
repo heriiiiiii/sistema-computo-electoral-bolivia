@@ -149,6 +149,7 @@ def upload_single_file(base_url, file_path):
         "dispositivo": "script-carga-masiva",
         "latitud": "0",
         "longitud": "0",
+        "sourceTipo": "CARGA_LOTE",
     }
 
     try:

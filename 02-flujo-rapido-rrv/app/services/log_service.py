@@ -1,7 +1,8 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 from app.repositories.rrv_repository import RRVRepository
 from app.utils.mongo_utils import serialize_mongo_documents
+from app.utils.source_utils import default_log_source
 
 class LogService:
     def __init__(self):
@@ -15,9 +16,19 @@ class LogService:
         detalle=None,
         acta_id=None,
         codigo_mesa=None,
-        datos_referencia=None
+        datos_referencia=None,
+        source=None,
     ):
         now = datetime.now(timezone.utc)
+
+        endpoint_referencia = (datos_referencia or {}).get("endpoint")
+
+        if source is None:
+            source = default_log_source(
+                tipo=tipo,
+                mensaje=mensaje,
+                endpoint=endpoint_referencia,
+            )
 
         log_data = {
             "logId": f"LOG-{uuid4()}",
@@ -30,6 +41,7 @@ class LogService:
             "modulo": "RRV",
             "fechaHora": now,
             "datosReferencia": datos_referencia or {},
+            "source": source,
             "createdAt": now
         }
 

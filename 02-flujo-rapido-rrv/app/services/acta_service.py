@@ -12,6 +12,11 @@ from app.utils.mongo_utils import serialize_mongo_document, serialize_mongo_docu
 from app.validators.file_validator import validate_uploaded_file
 from app.services.ocr_service import OCRService
 from app.services.visual_quality_service import VisualQualityService
+from app.utils.source_utils import (
+    acta_source_for_auto,
+    acta_source_for_manual,
+    sms_source,
+)
 
 
 class ActaService:
@@ -92,7 +97,8 @@ class ActaService:
         dispositivo,
         latitud,
         longitud,
-        ip_origen
+        ip_origen,
+        source_tipo=None
     ):
         file_bytes = await archivo.read()
 
@@ -140,12 +146,18 @@ class ActaService:
         with open(file_path, "wb") as output_file:
             output_file.write(file_bytes)
 
+        source = acta_source_for_manual(usuario_id)
+
+        if source_tipo:
+            source["tipo"] = source_tipo.strip().upper() or source["tipo"]
+
         acta_data = {
             "actaId": acta_id,
             "codigoMesa": codigo_mesa,
             "numeroMesa": numero_mesa,
             "codigoRecinto": codigo_recinto,
             "fuente": "APP_MOVIL_O_CARGA_WEB",
+            "source": source,
             "estado": estado,
             "ubicacion": {
                 "departamento": None,
@@ -289,7 +301,8 @@ class ActaService:
         dispositivo,
         latitud,
         longitud,
-        ip_origen
+        ip_origen,
+        source_tipo=None
     ):
         file_bytes = await archivo.read()
 
@@ -374,7 +387,8 @@ class ActaService:
                 estado="PENDIENTE_REVISION",
                 inconsistencias=[],
                 duplicate_info={"esDuplicada": False, "errores": []},
-                visual_quality=visual_quality_fallback
+                visual_quality=visual_quality_fallback,
+                source_tipo=source_tipo
             )
 
             self.repository.insert_acta(acta_data)
@@ -446,7 +460,8 @@ class ActaService:
             estado=estado,
             inconsistencias=inconsistencias,
             duplicate_info={"esDuplicada": es_duplicada, "errores": duplicate_errors},
-            visual_quality=visual_quality
+            visual_quality=visual_quality,
+            source_tipo=source_tipo
         )
 
         self.repository.insert_acta(acta_data)
@@ -659,7 +674,8 @@ class ActaService:
         estado,
         inconsistencias,
         duplicate_info,
-        visual_quality=None
+        visual_quality=None,
+        source_tipo=None
     ):
         if metadata is not None:
             metadata = self.resolver_cantidad_habilitados(metadata)
@@ -777,6 +793,7 @@ class ActaService:
             "numeroMesa": numero_mesa,
             "codigoRecinto": None,
             "fuente": "CARGA_WEB",
+            "source": acta_source_for_auto(source_tipo, usuario_id),
             "estado": estado,
             "ubicacion": ubicacion,
             "archivo": {
@@ -1479,6 +1496,7 @@ class ActaService:
             "estado": estado,
             "codigoMesa": codigo_mesa,
             "codigoRecinto": codigo_recinto,
+            "source": sms_source(numero_origen),
             "token": parsed.get("TOKEN"),
             "datosParseados": {
                 "p1": valores_numericos.get("P1"),

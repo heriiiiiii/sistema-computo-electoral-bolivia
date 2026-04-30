@@ -57,6 +57,15 @@ const smsRecords = [
       numeroAsociadoMesa: true,
       numeroAsociadoRecinto: true,
     },
+    source: {
+      tipo: "SMS",
+      canal: "RRV_SMS",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/sms",
+      descripcion: "Datos recibidos desde modulo SMS o simulacion SMS",
+      generadoPor: null,
+      fechaRegistro: null,
+    },
     estado: "VALIDO",
     errores: [],
     fechaRecepcion: new Date("2025-10-19T18:40:00Z"),
@@ -91,6 +100,15 @@ const smsRecords = [
       formatoValido: true,
       numeroAsociadoMesa: true,
       numeroAsociadoRecinto: true,
+    },
+    source: {
+      tipo: "SMS",
+      canal: "RRV_SMS",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/sms",
+      descripcion: "Datos recibidos desde modulo SMS o simulacion SMS",
+      generadoPor: null,
+      fechaRegistro: null,
     },
     estado: "VALIDO",
     errores: [],
@@ -127,6 +145,15 @@ const smsRecords = [
       numeroAsociadoMesa: true,
       numeroAsociadoRecinto: true,
     },
+    source: {
+      tipo: "SMS",
+      canal: "RRV_SMS",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/sms",
+      descripcion: "Datos recibidos desde modulo SMS o simulacion SMS",
+      generadoPor: null,
+      fechaRegistro: null,
+    },
     // SMS result differs from OCR result for same mesa → inconsistency detected
     estado: "SOSPECHOSO",
     errores: ["INCONSISTENCIA_CON_OCR: SMS votosValidos=250, OCR votosValidos=255. Diferencia: 5."],
@@ -150,6 +177,15 @@ const smsRecords = [
       formatoValido: true,
       numeroAsociadoMesa: false,
       numeroAsociadoRecinto: false,
+    },
+    source: {
+      tipo: "SMS",
+      canal: "RRV_SMS",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/sms",
+      descripcion: "Datos recibidos desde modulo SMS o simulacion SMS",
+      generadoPor: "+59171999999",
+      fechaRegistro: null,
     },
     estado: "INVALIDO",
     errores: ["SMS_NUMERO_NO_AUTORIZADO: Número +59171999999 no está en la lista de números autorizados."],
@@ -184,6 +220,15 @@ const smsRecords = [
       formatoValido: true,
       numeroAsociadoMesa: true,
       numeroAsociadoRecinto: true,
+    },
+    source: {
+      tipo: "SMS",
+      canal: "RRV_SMS",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/sms",
+      descripcion: "Datos recibidos desde modulo SMS o simulacion SMS",
+      generadoPor: null,
+      fechaRegistro: null,
     },
     // This is the second SMS for mesa 10101001001 from the same authorized number.
     // System keeps both records for audit. Does NOT overwrite SMS-001.
@@ -350,14 +395,14 @@ print("[DONE] Resultados inserted: " + resultInserted);
 print("\n[INFO] Inserting rrv_eventos records...");
 
 const eventos = [
-  { eventId: "EVT-001", tipoEvento: "ACTA_RECIBIDA",      actaId: "ACTA-RRV-001", smsId: null, resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { fuente: "APP_MOVIL", tamanioMb: 1.24 }, fechaEvento: new Date("2025-10-19T18:32:14Z"), origen: "RECEPCION", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:32:14Z"), updatedAt: new Date("2025-10-19T18:32:14Z") },
-  { eventId: "EVT-002", tipoEvento: "OCR_PROCESADO",       actaId: "ACTA-RRV-001", smsId: null, resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { confianza: 0.94, errores: 0 }, fechaEvento: new Date("2025-10-19T18:34:02Z"), origen: "OCR", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:34:02Z"), updatedAt: new Date("2025-10-19T18:34:02Z") },
-  { eventId: "EVT-003", tipoEvento: "ACTA_VALIDADA",       actaId: "ACTA-RRV-001", smsId: null, resultadoId: "RESULT-OCR-001", codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { estadoFinal: "PUBLICADA" }, fechaEvento: new Date("2025-10-19T18:34:05Z"), origen: "VALIDACION", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:34:05Z"), updatedAt: new Date("2025-10-19T18:34:05Z") },
-  { eventId: "EVT-004", tipoEvento: "SMS_RECIBIDO",        actaId: null, smsId: "SMS-001", resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { numeroOrigen: "+59172100001" }, fechaEvento: new Date("2025-10-19T18:40:00Z"), origen: "SMS", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:40:00Z"), updatedAt: new Date("2025-10-19T18:40:00Z") },
-  { eventId: "EVT-005", tipoEvento: "SMS_RECHAZADO",       actaId: null, smsId: "SMS-004", resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { motivo: "SMS_NUMERO_NO_AUTORIZADO", numeroOrigen: "+59171999999" }, fechaEvento: new Date("2025-10-19T18:50:00Z"), origen: "SMS", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:50:00Z"), updatedAt: new Date("2025-10-19T18:50:00Z") },
-  { eventId: "EVT-006", tipoEvento: "ACTA_RECHAZADA",      actaId: "ACTA-RRV-004", smsId: null, resultadoId: null, codigoMesa: "10101001004", codigoRecinto: "10101001", payload: { motivo: "IMAGEN_ILEGIBLE" }, fechaEvento: new Date("2025-10-19T19:23:35Z"), origen: "VALIDACION", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T19:23:35Z"), updatedAt: new Date("2025-10-19T19:23:35Z") },
-  { eventId: "EVT-007", tipoEvento: "INCONSISTENCIA_DETECTADA", actaId: "ACTA-RRV-003", smsId: "SMS-003", resultadoId: "RESULT-OCR-003", codigoMesa: "10101001003", codigoRecinto: "10101001", payload: { ocrValidos: 255, smsValidos: 250, diferencia: 5 }, fechaEvento: new Date("2025-10-19T19:01:30Z"), origen: "VALIDACION", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T19:01:30Z"), updatedAt: new Date("2025-10-19T19:01:30Z") },
-  { eventId: "EVT-008", tipoEvento: "DUPLICADO_DETECTADO", actaId: null, smsId: "SMS-005", resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { smsIdOriginal: "SMS-001", nuevoSmsId: "SMS-005" }, fechaEvento: new Date("2025-10-19T19:05:10Z"), origen: "VALIDACION", procesado: true, intentos: 1, createdAt: new Date("2025-10-19T19:05:10Z"), updatedAt: new Date("2025-10-19T19:05:10Z") },
+  { eventId: "EVT-001", tipoEvento: "ACTA_RECIBIDA",      actaId: "ACTA-RRV-001", smsId: null, resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { fuente: "APP_MOVIL", tamanioMb: 1.24 }, fechaEvento: new Date("2025-10-19T18:32:14Z"), origen: "RECEPCION", source: { tipo: "RECEPCION", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/actas", descripcion: "Acta recibida correctamente en el flujo rapido RRV", generadoPor: "USR-JM-001", fechaRegistro: new Date("2025-10-19T18:32:14Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:32:14Z"), updatedAt: new Date("2025-10-19T18:32:14Z") },
+  { eventId: "EVT-002", tipoEvento: "OCR_PROCESADO",       actaId: "ACTA-RRV-001", smsId: null, resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { confianza: 0.94, errores: 0 }, fechaEvento: new Date("2025-10-19T18:34:02Z"), origen: "OCR", source: { tipo: "OCR", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/actas/{actaId}/procesar-ocr", descripcion: "OCR procesado para acta RRV", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T18:34:02Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:34:02Z"), updatedAt: new Date("2025-10-19T18:34:02Z") },
+  { eventId: "EVT-003", tipoEvento: "ACTA_VALIDADA",       actaId: "ACTA-RRV-001", smsId: null, resultadoId: "RESULT-OCR-001", codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { estadoFinal: "PUBLICADA" }, fechaEvento: new Date("2025-10-19T18:34:05Z"), origen: "VALIDACION", source: { tipo: "VALIDACION", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/actas/{actaId}/validar", descripcion: "Acta validada con estado VALIDADA/PUBLICADA", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T18:34:05Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:34:05Z"), updatedAt: new Date("2025-10-19T18:34:05Z") },
+  { eventId: "EVT-004", tipoEvento: "SMS_RECIBIDO",        actaId: null, smsId: "SMS-001", resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { numeroOrigen: "+59172100001" }, fechaEvento: new Date("2025-10-19T18:40:00Z"), origen: "SMS", source: { tipo: "SMS", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/sms", descripcion: "SMS recibido desde modulo SMS", generadoPor: "+59172100001", fechaRegistro: new Date("2025-10-19T18:40:00Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:40:00Z"), updatedAt: new Date("2025-10-19T18:40:00Z") },
+  { eventId: "EVT-005", tipoEvento: "SMS_RECHAZADO",       actaId: null, smsId: "SMS-004", resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { motivo: "SMS_NUMERO_NO_AUTORIZADO", numeroOrigen: "+59171999999" }, fechaEvento: new Date("2025-10-19T18:50:00Z"), origen: "SMS", source: { tipo: "SMS", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/sms", descripcion: "SMS rechazado por numero no autorizado", generadoPor: "+59171999999", fechaRegistro: new Date("2025-10-19T18:50:00Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T18:50:00Z"), updatedAt: new Date("2025-10-19T18:50:00Z") },
+  { eventId: "EVT-006", tipoEvento: "ACTA_RECHAZADA",      actaId: "ACTA-RRV-004", smsId: null, resultadoId: null, codigoMesa: "10101001004", codigoRecinto: "10101001", payload: { motivo: "IMAGEN_ILEGIBLE" }, fechaEvento: new Date("2025-10-19T19:23:35Z"), origen: "VALIDACION", source: { tipo: "VALIDACION", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/actas/{actaId}/validar", descripcion: "Acta rechazada por imagen ilegible", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T19:23:35Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T19:23:35Z"), updatedAt: new Date("2025-10-19T19:23:35Z") },
+  { eventId: "EVT-007", tipoEvento: "INCONSISTENCIA_DETECTADA", actaId: "ACTA-RRV-003", smsId: "SMS-003", resultadoId: "RESULT-OCR-003", codigoMesa: "10101001003", codigoRecinto: "10101001", payload: { ocrValidos: 255, smsValidos: 250, diferencia: 5 }, fechaEvento: new Date("2025-10-19T19:01:30Z"), origen: "VALIDACION", source: { tipo: "VALIDACION", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: null, descripcion: "Inconsistencia detectada entre OCR y SMS para misma mesa", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T19:01:30Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T19:01:30Z"), updatedAt: new Date("2025-10-19T19:01:30Z") },
+  { eventId: "EVT-008", tipoEvento: "DUPLICADO_DETECTADO", actaId: null, smsId: "SMS-005", resultadoId: null, codigoMesa: "10101001001", codigoRecinto: "10101001", payload: { smsIdOriginal: "SMS-001", nuevoSmsId: "SMS-005" }, fechaEvento: new Date("2025-10-19T19:05:10Z"), origen: "VALIDACION", source: { tipo: "DUPLICADO", canal: "RRV_EVENTO", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/sms", descripcion: "SMS duplicado detectado para la misma mesa", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T19:05:10Z") }, procesado: true, intentos: 1, createdAt: new Date("2025-10-19T19:05:10Z"), updatedAt: new Date("2025-10-19T19:05:10Z") },
 ];
 
 let evtInserted = 0;
@@ -379,12 +424,12 @@ print("[DONE] Eventos inserted: " + evtInserted);
 print("\n[INFO] Inserting rrv_logs records...");
 
 const logs = [
-  { logId: "LOG-001", actaId: "ACTA-RRV-001", smsId: null, codigoMesa: "10101001001", tipo: "SISTEMA", severidad: "INFO", mensaje: "Acta recibida y publicada exitosamente.", detalle: "fuente: APP_MOVIL | confianza OCR: 94%", modulo: "RECEPCION", fechaHora: new Date("2025-10-19T18:35:00Z"), datosReferencia: { actaId: "ACTA-RRV-001" }, createdAt: new Date("2025-10-19T18:35:00Z") },
-  { logId: "LOG-002", actaId: null, smsId: "SMS-004", codigoMesa: "10101001001", tipo: "SMS_NUMERO_NO_AUTORIZADO", severidad: "WARNING", mensaje: "SMS rechazado por número no autorizado.", detalle: "numeroOrigen: +59171999999 no está registrado en sms_numeros_autorizados.", modulo: "SMS", fechaHora: new Date("2025-10-19T18:50:05Z"), datosReferencia: { smsId: "SMS-004", numeroOrigen: "+59171999999" }, createdAt: new Date("2025-10-19T18:50:05Z") },
-  { logId: "LOG-003", actaId: "ACTA-RRV-003", smsId: null, codigoMesa: "10101001003", tipo: "ERROR_OCR", severidad: "ERROR", mensaje: "Suma de votos por partido no coincide con votosValidos extraído por OCR.", detalle: "P1+P2+P3+P4=250, votosValidos=255. Diferencia=5. Acta marcada SOSPECHOSA.", modulo: "OCR", fechaHora: new Date("2025-10-19T18:57:20Z"), datosReferencia: { actaId: "ACTA-RRV-003", sumaPartidos: 250, votosValidosOCR: 255 }, createdAt: new Date("2025-10-19T18:57:20Z") },
-  { logId: "LOG-004", actaId: "ACTA-RRV-004", smsId: null, codigoMesa: "10101001004", tipo: "ERROR_IMAGEN", severidad: "CRITICAL", mensaje: "Imagen ilegible. No se puede procesar acta.", detalle: "Calidad de imagen: 22%. Todos los campos OCR vacíos. Acta RECHAZADA.", modulo: "OCR", fechaHora: new Date("2025-10-19T19:23:40Z"), datosReferencia: { actaId: "ACTA-RRV-004", calidad: 0.22 }, createdAt: new Date("2025-10-19T19:23:40Z") },
-  { logId: "LOG-005", actaId: "ACTA-RRV-003", smsId: "SMS-003", codigoMesa: "10101001003", tipo: "INCONSISTENCIA", severidad: "ERROR", mensaje: "Inconsistencia entre OCR y SMS para mesa 10101001003.", detalle: "OCR votosValidos=255, SMS votosValidos=250. Diferencia de 5 votos. Se requiere revisión.", modulo: "VALIDACION", fechaHora: new Date("2025-10-19T19:01:30Z"), datosReferencia: { actaId: "ACTA-RRV-003", smsId: "SMS-003" }, createdAt: new Date("2025-10-19T19:01:30Z") },
-  { logId: "LOG-006", actaId: null, smsId: "SMS-005", codigoMesa: "10101001001", tipo: "DUPLICADO", severidad: "WARNING", mensaje: "Mensaje SMS duplicado detectado para mesa 10101001001.", detalle: "Ya existe SMS-001 para esta mesa del mismo número. Nuevo SMS guardado como DUPLICADO.", modulo: "VALIDACION", fechaHora: new Date("2025-10-19T19:05:10Z"), datosReferencia: { smsIdOriginal: "SMS-001", smsIdDuplicado: "SMS-005" }, createdAt: new Date("2025-10-19T19:05:10Z") },
+  { logId: "LOG-001", actaId: "ACTA-RRV-001", smsId: null, codigoMesa: "10101001001", tipo: "SISTEMA", severidad: "INFO", mensaje: "Acta recibida y publicada exitosamente.", detalle: "fuente: APP_MOVIL | confianza OCR: 94%", modulo: "RECEPCION", fechaHora: new Date("2025-10-19T18:35:00Z"), datosReferencia: { actaId: "ACTA-RRV-001" }, source: { tipo: "SISTEMA", canal: "RRV_LOG", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/actas", descripcion: "Acta recibida y publicada exitosamente.", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T18:35:00Z") }, createdAt: new Date("2025-10-19T18:35:00Z") },
+  { logId: "LOG-002", actaId: null, smsId: "SMS-004", codigoMesa: "10101001001", tipo: "SMS_NUMERO_NO_AUTORIZADO", severidad: "WARNING", mensaje: "SMS rechazado por número no autorizado.", detalle: "numeroOrigen: +59171999999 no está registrado en sms_numeros_autorizados.", modulo: "SMS", fechaHora: new Date("2025-10-19T18:50:05Z"), datosReferencia: { smsId: "SMS-004", numeroOrigen: "+59171999999" }, source: { tipo: "SMS", canal: "RRV_LOG", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/sms", descripcion: "SMS rechazado por numero no autorizado.", generadoPor: "+59171999999", fechaRegistro: new Date("2025-10-19T18:50:05Z") }, createdAt: new Date("2025-10-19T18:50:05Z") },
+  { logId: "LOG-003", actaId: "ACTA-RRV-003", smsId: null, codigoMesa: "10101001003", tipo: "ERROR_OCR", severidad: "ERROR", mensaje: "Suma de votos por partido no coincide con votosValidos extraído por OCR.", detalle: "P1+P2+P3+P4=250, votosValidos=255. Diferencia=5. Acta marcada SOSPECHOSA.", modulo: "OCR", fechaHora: new Date("2025-10-19T18:57:20Z"), datosReferencia: { actaId: "ACTA-RRV-003", sumaPartidos: 250, votosValidosOCR: 255 }, source: { tipo: "OCR", canal: "RRV_LOG", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/actas/{actaId}/procesar-ocr", descripcion: "Suma de votos por partido no coincide con votosValidos extraido por OCR.", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T18:57:20Z") }, createdAt: new Date("2025-10-19T18:57:20Z") },
+  { logId: "LOG-004", actaId: "ACTA-RRV-004", smsId: null, codigoMesa: "10101001004", tipo: "ERROR_IMAGEN", severidad: "CRITICAL", mensaje: "Imagen ilegible. No se puede procesar acta.", detalle: "Calidad de imagen: 22%. Todos los campos OCR vacíos. Acta RECHAZADA.", modulo: "OCR", fechaHora: new Date("2025-10-19T19:23:40Z"), datosReferencia: { actaId: "ACTA-RRV-004", calidad: 0.22 }, source: { tipo: "CALIDAD_VISUAL", canal: "RRV_LOG", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/actas/{actaId}/procesar-ocr", descripcion: "Imagen ilegible. No se puede procesar acta.", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T19:23:40Z") }, createdAt: new Date("2025-10-19T19:23:40Z") },
+  { logId: "LOG-005", actaId: "ACTA-RRV-003", smsId: "SMS-003", codigoMesa: "10101001003", tipo: "INCONSISTENCIA", severidad: "ERROR", mensaje: "Inconsistencia entre OCR y SMS para mesa 10101001003.", detalle: "OCR votosValidos=255, SMS votosValidos=250. Diferencia de 5 votos. Se requiere revisión.", modulo: "VALIDACION", fechaHora: new Date("2025-10-19T19:01:30Z"), datosReferencia: { actaId: "ACTA-RRV-003", smsId: "SMS-003" }, source: { tipo: "VALIDACION", canal: "RRV_LOG", modulo: "02-flujo-rapido-rrv", endpoint: null, descripcion: "Inconsistencia entre OCR y SMS para misma mesa.", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T19:01:30Z") }, createdAt: new Date("2025-10-19T19:01:30Z") },
+  { logId: "LOG-006", actaId: null, smsId: "SMS-005", codigoMesa: "10101001001", tipo: "DUPLICADO", severidad: "WARNING", mensaje: "Mensaje SMS duplicado detectado para mesa 10101001001.", detalle: "Ya existe SMS-001 para esta mesa del mismo número. Nuevo SMS guardado como DUPLICADO.", modulo: "VALIDACION", fechaHora: new Date("2025-10-19T19:05:10Z"), datosReferencia: { smsIdOriginal: "SMS-001", smsIdDuplicado: "SMS-005" }, source: { tipo: "DUPLICADO", canal: "RRV_LOG", modulo: "02-flujo-rapido-rrv", endpoint: "POST /api/rrv/sms", descripcion: "Mensaje SMS duplicado detectado para una mesa.", generadoPor: "sistema", fechaRegistro: new Date("2025-10-19T19:05:10Z") }, createdAt: new Date("2025-10-19T19:05:10Z") },
 ];
 
 let logInserted = 0;

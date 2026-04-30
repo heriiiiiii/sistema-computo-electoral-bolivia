@@ -1,6 +1,7 @@
-﻿from datetime import datetime, timezone
+from datetime import datetime, timezone
 from uuid import uuid4
 from app.repositories.rrv_repository import RRVRepository
+from app.utils.source_utils import default_event_source
 
 class EventService:
     def __init__(self):
@@ -12,9 +13,19 @@ class EventService:
         acta_id=None,
         codigo_mesa=None,
         mensaje=None,
-        datos_referencia=None
+        datos_referencia=None,
+        source=None,
     ):
         now = datetime.now(timezone.utc)
+
+        endpoint_referencia = (datos_referencia or {}).get("endpoint")
+
+        if source is None:
+            source = default_event_source(
+                tipo_evento=tipo,
+                mensaje=mensaje or tipo,
+                endpoint=endpoint_referencia,
+            )
 
         event_data = {
             "eventId": f"EVT-{uuid4()}",
@@ -25,6 +36,7 @@ class EventService:
             "modulo": "RRV",
             "fechaHora": now,
             "datosReferencia": datos_referencia or {},
+            "source": source,
             "createdAt": now
         }
 
