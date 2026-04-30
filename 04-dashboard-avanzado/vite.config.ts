@@ -1,7 +1,19 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// https://vite.dev/config/
+/**
+ * Proxy de desarrollo del dashboard.
+ *
+ * /api/rrv:
+ *   Conteo rápido RRV.
+ *
+ * /api/oficial:
+ *   Cómputo oficial.
+ *
+ * Nota:
+ * El frontend no depende de la ubicación interna del backend oficial.
+ * Solo necesita que en desarrollo exista una API oficial escuchando en localhost:4000.
+ */
 export default defineConfig({
   plugins: [react()],
   server: {

@@ -1,10 +1,27 @@
 /**
- * Dashboard API — 100% datos reales
+ * Dashboard API — datos reales del sistema electoral
  *
- * RRV      → backend FastAPI (puerto 4001)  — MongoDB
- * Oficial  → backend NestJS  (puerto 4000)  — PostgreSQL
+ * Este archivo centraliza la comunicación HTTP del dashboard.
  *
- * Sin mocks. Ambos backends deben estar corriendo.
+ * Fuentes:
+ *
+ * 1) RRV / Conteo rápido
+ *    Endpoints: /api/rrv/*
+ *    Backend esperado: FastAPI RRV.
+ *    Base de datos: MongoDB Replica Set del módulo 01.
+ *
+ * 2) Oficial / Cómputo oficial
+ *    Endpoints: /api/oficial/*
+ *    Backend esperado: API oficial conectada al PostgreSQL del módulo 01.
+ *    Base de datos: PostgreSQL primary/replica mediante postgres-router / HAProxy.
+ *
+ * El dashboard no se conecta directamente a MongoDB ni PostgreSQL.
+ * Tampoco depende de la carpeta donde viva la API oficial.
+ *
+ * Regla:
+ * - No usar mocks para ocultar fallos.
+ * - Si una fuente cae, mostrar el estado real.
+ * - Si una fuente no tiene datos, mostrar ceros o vacío de forma explícita.
  */
 
 import axios from 'axios';

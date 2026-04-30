@@ -1,12 +1,33 @@
 version: "3.8"
 
 # =============================================================================
-#  Module 03 — Official Count Flow
+#  Sistema Nacional de Cómputo Electoral Bolivia
+#  Module 01 — Clusters, Databases, Synchronization, and Fault Tolerance
 #
-#  Requires module 01 (clusters) to be running first.
-#  Connects to the PostgreSQL router from module 01 via shared Docker network.
+#  MongoDB:
+#    mongo1 (27017) | mongo2 (27018) | mongo3 (27019) → Replica Set rs0
+#
+#  PostgreSQL:
+#    postgres-primary (5432)
+#    postgres-replica (5433)
+#    postgres-router / HAProxy (5434)
+#
+#  First-time startup:
+#    1. docker compose up -d mongo1 mongo2 mongo3 postgres-primary
+#    2. Wait ~30s for nodes to be healthy
+#    3. docker compose --profile init run --rm mongo-init
+#    4. docker compose up -d
+#
+#  Start failover monitor:
+#    docker compose --profile monitor up -d postgres-failover-monitor
+#
+#  Full reset:
+#    docker compose down -v
+#    docker compose up -d mongo1 mongo2 mongo3 postgres-primary
+#    Wait ~30s
+#    docker compose --profile init run --rm mongo-init
+#    docker compose up -d
 # =============================================================================
-
 networks:
   oep-network:
     external: true

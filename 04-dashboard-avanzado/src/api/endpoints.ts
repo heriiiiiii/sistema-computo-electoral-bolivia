@@ -1,13 +1,28 @@
 /**
  * Dashboard API endpoints.
  *
- * RRV      → backend FastAPI en puerto 4001
- * Oficial  → backend NestJS en puerto 4000
+ * El dashboard NO se conecta directamente a MongoDB ni PostgreSQL.
+ * Consume únicamente APIs HTTP.
  *
- * Ambos se acceden via proxy de Vite en desarrollo.
+ * Contratos de integración:
+ *
+ * 1) Conteo rápido RRV
+ *    Base: /api/rrv/*
+ *    Backend esperado: FastAPI RRV.
+ *    Base de datos: MongoDB Replica Set del módulo 01.
+ *
+ * 2) Cómputo oficial
+ *    Base: /api/oficial/*
+ *    Backend esperado: API oficial conectada al PostgreSQL del módulo 01.
+ *    Base de datos: PostgreSQL primary/replica mediante postgres-router / HAProxy.
+ *
+ * Nota:
+ * El dashboard no depende de una carpeta o módulo específico para el backend oficial.
+ * Solo exige que exista una API compatible con /api/oficial/*.
  */
+
 export const DASHBOARD_ENDPOINTS = {
-  // ── RRV (FastAPI :4001) ────────────────────────────────────────
+  // ── RRV / Conteo rápido ───────────────────────────────────────
   resumenRrv: '/api/rrv/dashboard/resumen',
   resultadosCandidatosRrv: '/api/rrv/dashboard/resultados-candidatos',
   estadoActasRrv: '/api/rrv/dashboard/estado-actas',
@@ -19,10 +34,10 @@ export const DASHBOARD_ENDPOINTS = {
   kpisRrv: '/api/rrv/dashboard/kpis',
   comparacionRrv: '/api/rrv/dashboard/comparacion',
 
-  // ── Oficial (NestJS :4000) ─────────────────────────────────────
+  // ── Oficial / Cómputo oficial ─────────────────────────────────
   resumenOficial: '/api/oficial/resumen',
   actasOficial: '/api/oficial/actas',
   validacionesOficial: '/api/oficial/validaciones',
   auditoriaOficial: '/api/oficial/auditoria',
-  importacionesOficial: '/api/oficial/importaciones',
+  importacionesOficial: '/api/oficial/importaciones'
 } as const;
