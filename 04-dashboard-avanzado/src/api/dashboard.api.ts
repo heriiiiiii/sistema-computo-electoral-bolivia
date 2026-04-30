@@ -44,7 +44,7 @@ import type {
 
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
-  timeout: 12000,
+  timeout: 5000,
   headers: { Accept: 'application/json' },
 });
 
