@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter --version)",
+      "Read(//c/flutter/**)",
+      "Read(//d/flutter/**)",
+      "Bash(cmd.exe /c \"where flutter\")",
+      "PowerShell(Get-Command flutter -ErrorAction SilentlyContinue; Get-ChildItem \"C:\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:LOCALAPPDATA\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue; Get-ChildItem \"$env:USERPROFILE\\\\flutter\\\\bin\\\\flutter.bat\" -ErrorAction SilentlyContinue)",
+      "Read(//c/src/flutter/bin/**)",
+      "PowerShell(flutter --version 2>&1)",
+      "PowerShell(cmd /c \"dir /s /b C:\\\\flutter.bat 2>nul\")",
+      "PowerShell(cmd /c \"dir /s /b D:\\\\flutter.bat 2>nul\")",
+      "Read(//c//**)",
+      "Read(//d//**)",
+      "Read(//c/Users/iNTEL/AppData/Local//**)"
+    ]
+  }
+}

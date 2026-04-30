@@ -1,0 +1,9 @@
+{
+  "_comment": "Lista de números de teléfono autorizados para enviar actas por SMS. Formato E.164 (+591XXXXXXXX). Agregar o remover números aquí sin cambiar código.",
+  "numbers": [
+    "+59171440740",
+    "+59176000001",
+    "+59176000002",
+    "+59176000003"
+  ]
+}
