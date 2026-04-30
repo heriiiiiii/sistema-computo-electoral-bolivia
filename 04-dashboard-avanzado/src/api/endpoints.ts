@@ -1,18 +1,28 @@
 /**
- * Dashboard API endpoints — apuntan al backend RRV.
+ * Dashboard API endpoints.
  *
- * Prefijo:  /api/rrv/dashboard/*
- * Servidor: http://localhost:4001 (via proxy en dev)
+ * RRV      → backend FastAPI en puerto 4001
+ * Oficial  → backend NestJS en puerto 4000
+ *
+ * Ambos se acceden via proxy de Vite en desarrollo.
  */
 export const DASHBOARD_ENDPOINTS = {
-  resumen: '/api/rrv/dashboard/resumen',
-  comparacion: '/api/rrv/dashboard/comparacion',
-  kpis: '/api/rrv/dashboard/kpis',
-  resultadosCandidatos: '/api/rrv/dashboard/resultados-candidatos',
-  estadoActas: '/api/rrv/dashboard/estado-actas',
-  inconsistencias: '/api/rrv/dashboard/inconsistencias',
-  geografico: '/api/rrv/dashboard/geografico',
-  metricasTecnicas: '/api/rrv/dashboard/metricas-tecnicas',
-  estadoClusters: '/api/rrv/dashboard/estado-clusters',
-  actasDigitalizadas: '/api/rrv/dashboard/actas-digitalizadas'
+  // ── RRV (FastAPI :4001) ────────────────────────────────────────
+  resumenRrv: '/api/rrv/dashboard/resumen',
+  resultadosCandidatosRrv: '/api/rrv/dashboard/resultados-candidatos',
+  estadoActasRrv: '/api/rrv/dashboard/estado-actas',
+  inconsistenciasRrv: '/api/rrv/dashboard/inconsistencias',
+  geograficoRrv: '/api/rrv/dashboard/geografico',
+  metricasTecnicasRrv: '/api/rrv/dashboard/metricas-tecnicas',
+  estadoClustersRrv: '/api/rrv/dashboard/estado-clusters',
+  actasDigitalizadasRrv: '/api/rrv/dashboard/actas-digitalizadas',
+  kpisRrv: '/api/rrv/dashboard/kpis',
+  comparacionRrv: '/api/rrv/dashboard/comparacion',
+
+  // ── Oficial (NestJS :4000) ─────────────────────────────────────
+  resumenOficial: '/api/oficial/resumen',
+  actasOficial: '/api/oficial/actas',
+  validacionesOficial: '/api/oficial/validaciones',
+  auditoriaOficial: '/api/oficial/auditoria',
+  importacionesOficial: '/api/oficial/importaciones',
 } as const;

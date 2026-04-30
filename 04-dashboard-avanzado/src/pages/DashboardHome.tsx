@@ -13,25 +13,24 @@ import {
 } from 'lucide-react';
 import { dashboardApi } from '../api/dashboard.api';
 import SummaryCard from '../components/cards/SummaryCard';
-import CandidateComparisonChart from '../components/charts/CandidateComparisonChart';
 import ActStatusDonutChart from '../components/charts/ActStatusDonutChart';
 import VoteTypeChart from '../components/charts/VoteTypeChart';
 import InconsistenciasTable from '../components/tables/InconsistenciasTable';
 import ClusterStatusTable from '../components/tables/ClusterStatusTable';
-import { mockVoteTypes } from '../data/mockDashboardData';
 import type {
   ActStatusCount,
   CandidateResult,
   ClusterStatus,
   DashboardResumen,
-  Inconsistencia
+  Inconsistencia,
+  VoteTypeResult
 } from '../types/dashboard.types';
-import { formatDateTime, formatNumber } from '../utils/formatters';
+import { formatNumber } from '../utils/formatters';
 import {
   calcularConfiabilidadRRV,
   calcularMargenVictoria
 } from '../utils/calculations';
-import "../styles/dashboard-home.css";
+import '../styles/dashboard-home.css';
 
 export default function DashboardHome() {
   const [resumen, setResumen] = useState<DashboardResumen | null>(null);
@@ -41,6 +40,7 @@ export default function DashboardHome() {
   const [clusters, setClusters] = useState<ClusterStatus[]>([]);
 
   useEffect(() => {
+  const cargarDatos = () => {
     Promise.all([
       dashboardApi.getResumen(),
       dashboardApi.getResultadosCandidatos(),
@@ -54,7 +54,16 @@ export default function DashboardHome() {
       setInconsistencias(inconsistenciasData);
       setClusters(clustersData);
     });
-  }, []);
+  };
+
+  cargarDatos();
+
+  const interval = window.setInterval(() => {
+    cargarDatos();
+  }, 10_000);
+
+  return () => window.clearInterval(interval);
+}, []);
 
   if (!resumen) {
     return <div className="loading-card">Cargando dashboard nacional...</div>;
@@ -73,6 +82,23 @@ export default function DashboardHome() {
       votos: candidato.votosRRV
     }))
   );
+    const voteTypes: VoteTypeResult[] = [
+  {
+    tipo: 'VALIDOS',
+    rrv: resumen.votos.rrv.votosValidos,
+    oficial: resumen.votos.oficial.votosValidos
+  },
+  {
+    tipo: 'BLANCOS',
+    rrv: resumen.votos.rrv.votosBlancos,
+    oficial: resumen.votos.oficial.votosBlancos
+  },
+  {
+    tipo: 'NULOS',
+    rrv: resumen.votos.rrv.votosNulos,
+    oficial: resumen.votos.oficial.votosNulos
+  }
+];
 
   return (
     <section className="page page-enter dashboard-home-page">
@@ -170,24 +196,10 @@ export default function DashboardHome() {
           icon={<Vote />}
           status="success"
         />
-        <SummaryCard
-          title="Última actualización"
-          value={formatDateTime(resumen.ultimaActualizacion)}
-          icon={<RadioTower />}
-          status="neutral"
-        />
       </div>
 
       <div className="dashboard-grid">
-        <article className="panel-card panel-wide">
-          <div className="section-header">
-            <div>
-              <h3>Votos por candidato</h3>
-              <p>Comparación directa RRV vs Oficial.</p>
-            </div>
-          </div>
-          <CandidateComparisonChart data={candidatos} />
-        </article>
+        
 
         <article className="panel-card">
           <div className="section-header">
@@ -206,7 +218,7 @@ export default function DashboardHome() {
               <p>Válidos, blancos y nulos.</p>
             </div>
           </div>
-          <VoteTypeChart data={mockVoteTypes} />
+          <VoteTypeChart data={voteTypes} />
         </article>
 
         <article className="panel-card panel-wide">

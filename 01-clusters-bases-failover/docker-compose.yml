@@ -1,26 +1,5 @@
 version: "3.8"
 
-# =============================================================================
-#  Sistema Nacional de Cómputo Electoral Bolivia
-#  Module 01 — Clusters, Databases, Synchronization, and Fault Tolerance
-#
-#  MongoDB  : mongo1 (27017) | mongo2 (27018) | mongo3 (27019)  → rs0
-#  PostgreSQL: postgres-primary (5432) | postgres-replica (5433)
-#
-#  First-time startup:
-#    1. docker compose up -d mongo1 mongo2 mongo3 postgres-primary
-#    2. Wait ~30s for nodes to be healthy
-#    3. docker compose run --rm mongo-init
-#    4. docker compose up -d
-#
-#  Full reset:
-#    docker compose down -v
-#    docker compose up -d mongo1 mongo2 mongo3 postgres-primary
-#    (wait 30s)
-#    docker compose run --rm mongo-init
-#    docker compose up -d
-# =============================================================================
-
 networks:
   oep-network:
     driver: bridge
@@ -36,8 +15,6 @@ volumes:
   postgres_replica_data:
 
 services:
-
-  # ── MongoDB node 1 ──────────────────────────────────────────────────────────
   mongo1:
     image: mongo:7
     container_name: mongo1
@@ -51,14 +28,12 @@ services:
     networks:
       - oep-network
     healthcheck:
-      test: ["CMD", "mongosh", "--port", "27017", "--quiet", "--eval",
-             "try { db.adminCommand({ping:1}).ok } catch(e) { 0 }"]
+      test: ["CMD", "mongosh", "--port", "27017", "--quiet", "--eval", "try { db.adminCommand({ping:1}).ok } catch(e) { 0 }"]
       interval: 10s
       timeout: 5s
       retries: 15
       start_period: 40s
 
-  # ── MongoDB node 2 ──────────────────────────────────────────────────────────
   mongo2:
     image: mongo:7
     container_name: mongo2
@@ -72,14 +47,12 @@ services:
     networks:
       - oep-network
     healthcheck:
-      test: ["CMD", "mongosh", "--port", "27017", "--quiet", "--eval",
-             "try { db.adminCommand({ping:1}).ok } catch(e) { 0 }"]
+      test: ["CMD", "mongosh", "--port", "27017", "--quiet", "--eval", "try { db.adminCommand({ping:1}).ok } catch(e) { 0 }"]
       interval: 10s
       timeout: 5s
       retries: 15
       start_period: 40s
 
-  # ── MongoDB node 3 ──────────────────────────────────────────────────────────
   mongo3:
     image: mongo:7
     container_name: mongo3
@@ -93,19 +66,16 @@ services:
     networks:
       - oep-network
     healthcheck:
-      test: ["CMD", "mongosh", "--port", "27017", "--quiet", "--eval",
-             "try { db.adminCommand({ping:1}).ok } catch(e) { 0 }"]
+      test: ["CMD", "mongosh", "--port", "27017", "--quiet", "--eval", "try { db.adminCommand({ping:1}).ok } catch(e) { 0 }"]
       interval: 10s
       timeout: 5s
       retries: 15
       start_period: 40s
 
-  # ── Replica set init (runs once via: docker compose run --rm mongo-init) ────
-  # This service is NOT started automatically by docker compose up.
-  # Run it manually after the 3 mongo nodes are healthy.
   mongo-init:
     image: mongo:7
     container_name: mongo-init
+    profiles: [init]
     restart: "no"
     depends_on:
       mongo1:
@@ -118,10 +88,8 @@ services:
       - ./mongo:/scripts
     networks:
       - oep-network
-    # Executes init-replica.js which is idempotent (safe to run more than once)
     command: ["mongosh", "--host", "mongo1", "--port", "27017", "/scripts/init-replica.js"]
 
-  # ── PostgreSQL Primary ──────────────────────────────────────────────────────
   postgres-primary:
     image: postgres:16
     container_name: postgres-primary
@@ -144,9 +112,7 @@ services:
       -c log_replication_commands=on
     volumes:
       - postgres_primary_data:/var/lib/postgresql/data
-      # Init scripts run once on first start (alphabetical order)
       - ./postgres/init:/docker-entrypoint-initdb.d
-      # Custom pg_hba.conf that allows replication connections
       - ./postgres/primary-hba.conf:/etc/postgresql/pg_hba.conf:ro
     ports:
       - "5432:5432"
@@ -159,10 +125,6 @@ services:
       retries: 15
       start_period: 45s
 
-  # ── PostgreSQL Replica (streaming replication) ──────────────────────────────
-  # Uses a custom entrypoint that runs pg_basebackup on first start.
-  # On subsequent starts the existing data directory is reused.
-  # Read-only by default (hot_standby). Can be promoted manually — see docs/.
   postgres-replica:
     image: postgres:16
     container_name: postgres-replica
@@ -175,12 +137,10 @@ services:
       REPLICATION_USER: replicator
       REPLICATION_PASSWORD: replicator_password
       TZ: America/La_Paz
-    # Overrides the default postgres entrypoint with our setup script
-    entrypoint: ["/bin/bash", "/replica-setup.sh"]
+    entrypoint: ["/bin/bash", "-c", "tr -d '\r' < /replica-setup.sh > /tmp/replica-setup.sh && bash /tmp/replica-setup.sh"]
     volumes:
       - postgres_replica_data:/var/lib/postgresql/data
       - ./postgres/replica-setup.sh:/replica-setup.sh:ro
-      # Same HBA config as primary — needed after promotion so the old primary can re-join as standby
       - ./postgres/primary-hba.conf:/etc/postgresql/pg_hba.conf:ro
     ports:
       - "5433:5432"
@@ -196,18 +156,6 @@ services:
       retries: 15
       start_period: 90s
 
-  # ── PostgreSQL Router (HAProxy) ─────────────────────────────────────────────
-  # Stable connection endpoint — routes to the current writable PRIMARY.
-  # Backend services should connect here instead of postgres-primary directly.
-  # Before failover: → postgres-primary:5432
-  # After failover:  → postgres-replica:5432 (when postgres-primary is unreachable)
-  #
-  # Connection string (inside Docker network):
-  #   postgresql://oep_user:oep_password@postgres-router:5432/oep_oficial
-  # From host:
-  #   postgresql://oep_user:oep_password@localhost:5434/oep_oficial
-  # Stats dashboard:
-  #   http://localhost:8404/stats
   postgres-router:
     image: haproxy:2.8
     container_name: postgres-router
@@ -215,8 +163,8 @@ services:
     volumes:
       - ./postgres/haproxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
     ports:
-      - "5434:5432"   # PostgreSQL router endpoint (host)
-      - "8404:8404"   # HAProxy stats dashboard (host)
+      - "5434:5432"
+      - "8404:8404"
     depends_on:
       postgres-primary:
         condition: service_healthy
@@ -229,18 +177,6 @@ services:
       retries: 3
       start_period: 10s
 
-  # ── Automatic PostgreSQL Failover Monitor (opt-in) ─────────────────────────
-  # Checks postgres-primary every 5s. If primary is down for 3 consecutive
-  # checks, it automatically promotes postgres-replica via SELECT pg_promote().
-  # After promotion it stays running in observation mode (no re-promotion).
-  #
-  # Start:  docker compose --profile monitor up -d postgres-failover-monitor
-  # Logs:   docker logs -f postgres-failover-monitor
-  # Stop:   docker compose --profile monitor stop postgres-failover-monitor
-  #
-  # Can also be run from the host (outside Docker):
-  #   cd scripts && npm install
-  #   PG_REPLICA_PORT=5433 node postgres-failover-monitor.js
   postgres-failover-monitor:
     image: node:20-alpine
     container_name: postgres-failover-monitor

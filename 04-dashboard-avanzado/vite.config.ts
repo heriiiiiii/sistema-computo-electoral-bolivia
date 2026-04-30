@@ -9,6 +9,10 @@ export default defineConfig({
       '/api/rrv': {
         target: 'http://localhost:4001',
         changeOrigin: true
+      },
+      '/api/oficial': {
+        target: 'http://localhost:4000',
+        changeOrigin: true
       }
     }
   }

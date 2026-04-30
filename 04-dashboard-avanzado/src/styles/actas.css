@@ -1,17 +1,17 @@
 /* ================================
-   Comparación Page - Premium KPI Cards
+   Actas Page - Premium KPI Cards
    Solo afecta las cards superiores
 ================================ */
 
-.comparacion-page .comparacion-kpi-grid {
+.actas-page .actas-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(255px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
   gap: 16px;
   width: 100%;
   align-items: stretch;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card {
+.actas-page .actas-kpi-grid .kpi-card {
   position: relative;
   min-height: 150px;
   height: auto;
@@ -31,7 +31,7 @@
     background 0.25s ease;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card:hover {
+.actas-page .actas-kpi-grid .kpi-card:hover {
   transform: translateY(-4px);
   border-color: rgba(125, 211, 252, 0.34);
   background:
@@ -39,7 +39,7 @@
     linear-gradient(135deg, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0.84));
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card::before {
+.actas-page .actas-kpi-grid .kpi-card::before {
   content: "";
   position: absolute;
   inset: 0 auto 0 0;
@@ -48,7 +48,7 @@
   background: linear-gradient(180deg, #38bdf8, rgba(56, 189, 248, 0.28));
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card::after {
+.actas-page .actas-kpi-grid .kpi-card::after {
   content: "";
   position: absolute;
   width: 160px;
@@ -60,11 +60,11 @@
   transition: transform 0.3s ease;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card:hover::after {
+.actas-page .actas-kpi-grid .kpi-card:hover::after {
   transform: scale(1.12);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-top {
+.actas-page .actas-kpi-grid .kpi-top {
   position: relative;
   z-index: 1;
   display: flex;
@@ -73,11 +73,11 @@
   gap: 16px;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-top > div:not(.kpi-icon) {
+.actas-page .actas-kpi-grid .kpi-top > div:not(.kpi-icon) {
   min-width: 0;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-icon {
+.actas-page .actas-kpi-grid .kpi-icon {
   width: 58px;
   height: 58px;
   flex: 0 0 58px;
@@ -91,29 +91,29 @@
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-icon svg {
+.actas-page .actas-kpi-grid .kpi-icon svg {
   width: 29px;
   height: 29px;
   stroke-width: 2.2;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card span {
+.actas-page .actas-kpi-grid .kpi-card span {
   color: #aebdd2;
   font-size: 0.95rem;
   font-weight: 500;
   letter-spacing: -0.01em;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card strong {
+.actas-page .actas-kpi-grid .kpi-card strong {
   display: block;
   margin-top: 10px;
   color: #f8fafc;
-  font-size: clamp(1.75rem, 2.6vw, 2.3rem);
+  font-size: clamp(2rem, 3vw, 2.45rem);
   line-height: 1;
   letter-spacing: -0.055em;
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-card p {
+.actas-page .actas-kpi-grid .kpi-card p {
   position: relative;
   z-index: 1;
   margin-top: 16px;
@@ -122,93 +122,100 @@
   line-height: 1.45;
 }
 
-/* Estados */
+/* Estados visuales */
 
-.comparacion-page .comparacion-kpi-grid .kpi-positivo {
+.actas-page .actas-kpi-grid .kpi-positivo {
   border-color: rgba(34, 197, 94, 0.23);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-positivo::before {
+.actas-page .actas-kpi-grid .kpi-positivo::before {
   background: linear-gradient(180deg, #22c55e, rgba(34, 197, 94, 0.28));
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-positivo::after {
+.actas-page .actas-kpi-grid .kpi-positivo::after {
   background: rgba(34, 197, 94, 0.13);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-positivo .kpi-icon {
+.actas-page .actas-kpi-grid .kpi-positivo .kpi-icon {
   color: #bbf7d0;
   background: linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(21, 128, 61, 0.1));
   border-color: rgba(34, 197, 94, 0.36);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-neutro {
+.actas-page .actas-kpi-grid .kpi-neutro {
   border-color: rgba(56, 189, 248, 0.23);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-neutro::before {
+.actas-page .actas-kpi-grid .kpi-neutro::before {
   background: linear-gradient(180deg, #38bdf8, rgba(56, 189, 248, 0.28));
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-neutro::after {
+.actas-page .actas-kpi-grid .kpi-neutro::after {
   background: rgba(56, 189, 248, 0.13);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-neutro .kpi-icon {
+.actas-page .actas-kpi-grid .kpi-neutro .kpi-icon {
   color: #bae6fd;
   background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 116, 144, 0.1));
   border-color: rgba(56, 189, 248, 0.36);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-alerta {
+.actas-page .actas-kpi-grid .kpi-alerta {
   border-color: rgba(250, 204, 21, 0.23);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-alerta::before {
+.actas-page .actas-kpi-grid .kpi-alerta::before {
   background: linear-gradient(180deg, #facc15, rgba(250, 204, 21, 0.28));
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-alerta::after {
+.actas-page .actas-kpi-grid .kpi-alerta::after {
   background: rgba(250, 204, 21, 0.13);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-alerta .kpi-icon {
+.actas-page .actas-kpi-grid .kpi-alerta .kpi-icon {
   color: #fef3c7;
   background: linear-gradient(135deg, rgba(250, 204, 21, 0.22), rgba(161, 98, 7, 0.1));
   border-color: rgba(250, 204, 21, 0.36);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-critico {
+.actas-page .actas-kpi-grid .kpi-critico {
   border-color: rgba(239, 68, 68, 0.23);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-critico::before {
+.actas-page .actas-kpi-grid .kpi-critico::before {
   background: linear-gradient(180deg, #ef4444, rgba(239, 68, 68, 0.28));
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-critico::after {
+.actas-page .actas-kpi-grid .kpi-critico::after {
   background: rgba(239, 68, 68, 0.13);
 }
 
-.comparacion-page .comparacion-kpi-grid .kpi-critico .kpi-icon {
+.actas-page .actas-kpi-grid .kpi-critico .kpi-icon {
   color: #fecaca;
   background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(127, 29, 29, 0.1));
   border-color: rgba(239, 68, 68, 0.36);
 }
 
 @media (max-width: 900px) {
-  .comparacion-page .comparacion-kpi-grid {
+  .actas-page .actas-kpi-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
 @media (max-width: 620px) {
-  .comparacion-page .comparacion-kpi-grid {
+  .actas-page .actas-kpi-grid {
     grid-template-columns: 1fr;
   }
 
-  .comparacion-page .comparacion-kpi-grid .kpi-card {
+  .actas-page .actas-kpi-grid .kpi-card {
     min-height: 135px;
     padding: 20px;
+  }
+
+  .actas-page .actas-kpi-grid .kpi-icon {
+    width: 54px;
+    height: 54px;
+    flex-basis: 54px;
+    border-radius: 18px;
   }
 }

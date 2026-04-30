@@ -5,16 +5,6 @@ version: "3.8"
 #
 #  Requires module 01 (clusters) to be running first.
 #  Connects to the PostgreSQL router from module 01 via shared Docker network.
-#
-#  Start order:
-#    1. cd ../01-clusters-bases-failover && docker compose up -d
-#    2. Wait ~30s for cluster to be healthy
-#    3. cd ../03-flujo-oficial && docker compose up -d oficial-backend
-#    4. docker compose run --rm csv-automation
-#
-#  Manual development (without Docker):
-#    cd backend && npm install && npm run start:dev
-#    cd automation && npm install && node load-csvs.js
 # =============================================================================
 
 networks:
@@ -44,21 +34,7 @@ services:
       retries: 10
       start_period: 30s
 
-  # ── Web UI (React + Vite) ────────────────────────────────────────────────────
-  oficial-frontend:
-    build: ./frontend
-    container_name: oficial-frontend
-    restart: unless-stopped
-    ports:
-      - "5173:5173"
-    networks:
-      - oep-network
-    depends_on:
-      - oficial-backend
-
   # ── CSV Automation (runs once) ───────────────────────────────────────────────
-  # Run manually after backend is healthy:
-  #   docker compose run --rm csv-automation
   csv-automation:
     build: ./automation
     container_name: csv-automation

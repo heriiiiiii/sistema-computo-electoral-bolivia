@@ -7,6 +7,7 @@ import ComparacionTable from '../components/tables/ComparacionTable';
 import type { ComparacionGeneral } from '../types/dashboard.types';
 import { formatNumber, formatPercent, getStatusClass } from '../utils/formatters';
 import { calcularMargenVictoria } from '../utils/calculations';
+import '../styles/comparacion.css';
 
 export default function ComparacionPage() {
   const [comparacion, setComparacion] = useState<ComparacionGeneral | null>(null);
@@ -15,24 +16,30 @@ export default function ComparacionPage() {
     dashboardApi.getComparacion().then(setComparacion);
   }, []);
 
-  const margenRRV = useMemo(() => {
+    const fuenteMargen = useMemo(() => {
+    if (!comparacion) return 'RRV';
+
+    return comparacion.totalVotosRRV > 0 ? 'RRV' : 'Oficial';
+  }, [comparacion]);
+
+  const margenVictoria = useMemo(() => {
     if (!comparacion) return 0;
 
     return calcularMargenVictoria(
       comparacion.candidatos.map((item) => ({
         nombre: item.candidato,
-        votos: item.votosRRV
+        votos: fuenteMargen === 'RRV' ? item.votosRRV : item.votosOficial
       }))
     );
-  }, [comparacion]);
+  }, [comparacion, fuenteMargen]);
 
   if (!comparacion) {
     return <div className="loading-card">Cargando comparación electoral...</div>;
   }
 
   return (
-    <section className="page page-enter">
-      <div className="section-header elevated">
+<section className="page page-enter comparacion-page">
+    <div className="section-header elevated">
         <div>
           <span className="eyebrow">
             <GitCompare size={15} />
@@ -50,8 +57,7 @@ export default function ComparacionPage() {
         </span>
       </div>
 
-      <div className="kpi-grid">
-        <KpiCard
+<div className="kpi-grid comparacion-kpi-grid">        <KpiCard
           title="Total votos RRV"
           value={formatNumber(comparacion.totalVotosRRV)}
           description="Total computado desde la fuente RRV"
@@ -66,12 +72,12 @@ export default function ComparacionPage() {
           icon={<BadgeCheck />}
         />
         <KpiCard
-          title="Diferencia total"
-          value={formatNumber(comparacion.diferenciaTotal)}
-          description="Diferencia absoluta entre ambas fuentes"
-          status={comparacion.diferenciaTotal > 1000 ? 'ALERTA' : 'NEUTRO'}
-          icon={<Scale />}
-        />
+  title="Diferencia total"
+  value={formatNumber(Math.abs(comparacion.diferenciaTotal))}
+  description="Diferencia absoluta entre ambas fuentes"
+  status={Math.abs(comparacion.diferenciaTotal) > 1000 ? 'ALERTA' : 'NEUTRO'}
+  icon={<Scale />}
+/>
         <KpiCard
           title="Diferencia porcentual"
           value={formatPercent(comparacion.diferenciaPorcentualTotal, 4)}
@@ -80,12 +86,12 @@ export default function ComparacionPage() {
           icon={<GitCompare />}
         />
         <KpiCard
-          title="Margen de victoria RRV"
-          value={formatPercent(margenRRV)}
-          description="Distancia entre primer y segundo candidato"
-          status="POSITIVO"
-          icon={<BadgeCheck />}
-        />
+  title={`Margen de victoria ${fuenteMargen}`}
+  value={formatPercent(margenVictoria)}
+  description="Distancia entre primer y segundo candidato"
+  status="POSITIVO"
+  icon={<BadgeCheck />}
+/>
       </div>
 
       <article className="panel-card">

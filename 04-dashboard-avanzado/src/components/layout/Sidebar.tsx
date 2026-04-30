@@ -70,13 +70,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         })}
       </nav>
 
-      <div className="sidebar-footer">
-        <span className="status-dot" />
-        <div>
-          <strong>Solo visualización</strong>
-          <small>Sin escritura en base de datos</small>
-        </div>
-      </div>
+      
     </aside>
   );
 }

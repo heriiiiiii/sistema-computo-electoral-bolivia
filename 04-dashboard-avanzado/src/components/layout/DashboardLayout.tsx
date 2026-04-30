@@ -1,8 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Header from './Header';
 import Sidebar from './Sidebar';
-import { mockResumen } from '../../data/mockDashboardData';
 
 const PAGE_COPY: Record<string, { title: string; subtitle: string }> = {
   '/': {
@@ -35,6 +34,16 @@ export default function DashboardLayout() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const [lastUpdate, setLastUpdate] = useState(() => new Date().toISOString());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      setLastUpdate(new Date().toISOString());
+    }, 60_000);
+
+    return () => window.clearInterval(interval);
+  }, []);
+
   const page = useMemo(() => {
     return PAGE_COPY[location.pathname] ?? PAGE_COPY['/'];
   }, [location.pathname]);
@@ -55,7 +64,7 @@ export default function DashboardLayout() {
         <Header
           title={page.title}
           subtitle={page.subtitle}
-          lastUpdate={mockResumen.ultimaActualizacion}
+          lastUpdate={lastUpdate}
           onMenuClick={() => setMobileOpen(true)}
         />
 
