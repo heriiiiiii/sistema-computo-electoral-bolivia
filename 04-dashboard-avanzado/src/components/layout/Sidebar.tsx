@@ -68,9 +68,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             </NavLink>
           );
         })}
-      </nav>
-
-      
+      </nav> 
     </aside>
   );
 }

@@ -60,13 +60,37 @@ function getFilteredVotes(item: GeograficoItem, fuente: FuenteDatos): number {
 
 export default function GeograficoPage() {
   const [data, setData] = useState<GeograficoItem[]>([]);
+  const [loading, setLoading] = useState(true);
+const [error, setError] = useState<string | null>(null);
   const [fuente, setFuente] = useState<FuenteDatos>('AMBOS');
   const [nivel, setNivel] = useState<NivelGeografico>('DEPARTAMENTO');
   const [departamento, setDepartamento] = useState('TODOS');
 
   useEffect(() => {
-    dashboardApi.getGeografico().then(setData);
-  }, []);
+  let mounted = true;
+
+  dashboardApi
+    .getGeografico()
+    .then((response) => {
+      if (!mounted) return;
+      setData(response);
+      setError(null);
+    })
+    .catch((err) => {
+      console.error('Error cargando datos geográficos:', err);
+      if (!mounted) return;
+      setError('No se pudo cargar el análisis geográfico. Verifica el endpoint RRV geográfico.');
+    })
+    .finally(() => {
+      if (mounted) {
+        setLoading(false);
+      }
+    });
+
+  return () => {
+    mounted = false;
+  };
+}, []);
 
   const departamentoOptions = useMemo<FilterOption[]>(() => {
     return buildFilterOptions(data.map((item) => item.departamento));
@@ -108,9 +132,26 @@ export default function GeograficoPage() {
   function handleDepartmentSelect(selected: string) {
     setDepartamento((current) => (current === selected ? 'TODOS' : selected));
   }
+  
+if (loading) {
+  return <div className="loading-card">Cargando análisis geográfico...</div>;
+}
+
+if (error) {
+  return (
+    <section className="page page-enter geographic-page">
+      <div className="loading-card">{error}</div>
+    </section>
+  );
+}
 
   return (
     <section className="page page-enter geographic-page">
+      {data.length === 0 && (
+  <div className="loading-card">
+    No existen datos geográficos disponibles. El dashboard no está usando mocks.
+  </div>
+)}
       <div className="kpi-grid geographic-kpi-grid">
         <KpiCard
           title="Votos RRV"

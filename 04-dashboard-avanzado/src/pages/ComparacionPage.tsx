@@ -11,12 +11,60 @@ import '../styles/comparacion.css';
 
 export default function ComparacionPage() {
   const [comparacion, setComparacion] = useState<ComparacionGeneral | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  function cargarComparacion() {
+    setLoading(true);
+    setError(null);
+
+    dashboardApi
+      .getComparacion()
+      .then((response) => {
+        setComparacion(response);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error('Error cargando comparación:', err);
+        setComparacion(null);
+        setError('No se pudo cargar la comparación RRV vs Oficial.');
+      })
+      .finally(() => {
+        setLoading(false);
+      });
+  }
 
   useEffect(() => {
-    dashboardApi.getComparacion().then(setComparacion);
+    let mounted = true;
+
+    setLoading(true);
+    setError(null);
+
+    dashboardApi
+      .getComparacion()
+      .then((response) => {
+        if (!mounted) return;
+        setComparacion(response);
+        setError(null);
+      })
+      .catch((err) => {
+        console.error('Error cargando comparación:', err);
+        if (!mounted) return;
+        setComparacion(null);
+        setError('No se pudo cargar la comparación RRV vs Oficial.');
+      })
+      .finally(() => {
+        if (mounted) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
-    const fuenteMargen = useMemo(() => {
+  const fuenteMargen = useMemo(() => {
     if (!comparacion) return 'RRV';
 
     return comparacion.totalVotosRRV > 0 ? 'RRV' : 'Oficial';
@@ -28,18 +76,35 @@ export default function ComparacionPage() {
     return calcularMargenVictoria(
       comparacion.candidatos.map((item) => ({
         nombre: item.candidato,
-        votos: fuenteMargen === 'RRV' ? item.votosRRV : item.votosOficial
+        votos: fuenteMargen === 'RRV' ? item.votosRRV : item.votosOficial,
       }))
     );
   }, [comparacion, fuenteMargen]);
 
-  if (!comparacion) {
+  if (loading) {
     return <div className="loading-card">Cargando comparación electoral...</div>;
   }
 
+  if (error || !comparacion) {
+    return (
+      <section className="page page-enter comparacion-page">
+        <div className="error-card">
+          <p>{error || 'No se pudo obtener la comparación.'}</p>
+          <button
+            className="button primary"
+            type="button"
+            onClick={cargarComparacion}
+          >
+            Reintentar
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   return (
-<section className="page page-enter comparacion-page">
-    <div className="section-header elevated">
+    <section className="page page-enter comparacion-page">
+      <div className="section-header elevated">
         <div>
           <span className="eyebrow">
             <GitCompare size={15} />
@@ -57,13 +122,15 @@ export default function ComparacionPage() {
         </span>
       </div>
 
-<div className="kpi-grid comparacion-kpi-grid">        <KpiCard
+      <div className="kpi-grid comparacion-kpi-grid">
+        <KpiCard
           title="Total votos RRV"
           value={formatNumber(comparacion.totalVotosRRV)}
           description="Total computado desde la fuente RRV"
           status="POSITIVO"
           icon={<Vote />}
         />
+
         <KpiCard
           title="Total votos Oficial"
           value={formatNumber(comparacion.totalVotosOficial)}
@@ -71,13 +138,15 @@ export default function ComparacionPage() {
           status="POSITIVO"
           icon={<BadgeCheck />}
         />
+
         <KpiCard
-  title="Diferencia total"
-  value={formatNumber(Math.abs(comparacion.diferenciaTotal))}
-  description="Diferencia absoluta entre ambas fuentes"
-  status={Math.abs(comparacion.diferenciaTotal) > 1000 ? 'ALERTA' : 'NEUTRO'}
-  icon={<Scale />}
-/>
+          title="Diferencia total"
+          value={formatNumber(Math.abs(comparacion.diferenciaTotal))}
+          description="Diferencia absoluta entre ambas fuentes"
+          status={Math.abs(comparacion.diferenciaTotal) > 1000 ? 'ALERTA' : 'NEUTRO'}
+          icon={<Scale />}
+        />
+
         <KpiCard
           title="Diferencia porcentual"
           value={formatPercent(comparacion.diferenciaPorcentualTotal, 4)}
@@ -85,13 +154,14 @@ export default function ComparacionPage() {
           status="NEUTRO"
           icon={<GitCompare />}
         />
+
         <KpiCard
-  title={`Margen de victoria ${fuenteMargen}`}
-  value={formatPercent(margenVictoria)}
-  description="Distancia entre primer y segundo candidato"
-  status="POSITIVO"
-  icon={<BadgeCheck />}
-/>
+          title={`Margen de victoria ${fuenteMargen}`}
+          value={formatPercent(margenVictoria)}
+          description="Distancia entre primer y segundo candidato"
+          status="POSITIVO"
+          icon={<BadgeCheck />}
+        />
       </div>
 
       <article className="panel-card">
@@ -101,6 +171,7 @@ export default function ComparacionPage() {
             <p>Comparación visual de resultados RRV y Oficial.</p>
           </div>
         </div>
+
         <CandidateComparisonChart data={comparacion.candidatos} />
       </article>
 
@@ -111,6 +182,7 @@ export default function ComparacionPage() {
             <p>Detalle por partido, candidato, diferencia y estado.</p>
           </div>
         </div>
+
         <ComparacionTable data={comparacion.candidatos} />
       </article>
     </section>

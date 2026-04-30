@@ -15,19 +15,18 @@ interface ActasPorHoraChartProps {
   data: ActasPorHora[];
 }
 
-export default function ActasPorHoraChart({ data }: ActasPorHoraChartProps) {
-  if (data.length === 0) {
+export default function ActasPorHoraChart({ data }: { data: any[] }) {
+  if (!data || data.length === 0) {
     return (
-      <div className="chart-box chart-empty">
-        No hay datos disponibles para el flujo de actas.
+      <div className="empty-chart">
+        No existen datos suficientes para mostrar el flujo de actas por hora.
       </div>
     );
   }
 
   return (
     <div className="chart-box">
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart
+<ResponsiveContainer width="100%" height={300} minWidth={300} minHeight={260}>        <LineChart
           data={data}
           margin={{ top: 18, right: 24, left: 0, bottom: 8 }}
         >
