@@ -16,7 +16,7 @@ import KpiCard from '../components/cards/KpiCard';
 import ClusterStatusTable from '../components/tables/ClusterStatusTable';
 import type { ClusterStatus, MetricasTecnicas } from '../types/dashboard.types';
 import { formatNumber, formatPercent } from '../utils/formatters';
-import '../styles/dashboard-home.css';
+import '../styles/tecnico.css';
 
 const METRICAS_FALLBACK: MetricasTecnicas = {
   latenciaPromedioMs: 0,
@@ -129,7 +129,7 @@ export default function TecnicoPage() {
   }
 
   return (
-    <section className="page page-enter">
+    <section className="page page-enter tecnicos-page">
       {erroresCarga.length > 0 && (
         <div className="loading-card">
           {erroresCarga.map((error) => (
@@ -138,7 +138,7 @@ export default function TecnicoPage() {
         </div>
       )}
 
-      <div className="kpi-grid technical-grid home-summary-grid">
+      <div className="kpi-grid tecnicos-kpi-grid">
         <KpiCard
           title="Latencia promedio"
           value={`${formatNumber(metricasSeguras.latenciaPromedioMs)} ms`}

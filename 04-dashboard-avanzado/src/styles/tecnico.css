@@ -1,0 +1,214 @@
+/* ================================
+   Tecnicos Page - Premium KPI Cards
+   Solo afecta las cards superiores
+================================ */
+
+.tecnicos-page .tecnicos-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(245px, 1fr));
+  gap: 16px;
+  width: 100%;
+  align-items: stretch;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card {
+  position: relative;
+  min-height: 150px;
+  height: auto;
+  overflow: hidden;
+  border-radius: 26px;
+  padding: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.14), transparent 36%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(15, 23, 42, 0.8));
+  border: 1px solid rgba(56, 189, 248, 0.16);
+  box-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.24),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  transition:
+    transform 0.25s ease,
+    border-color 0.25s ease,
+    background 0.25s ease;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(56, 189, 248, 0.32);
+  background:
+    radial-gradient(circle at top right, rgba(56, 189, 248, 0.2), transparent 38%),
+    linear-gradient(135deg, rgba(15, 23, 42, 1), rgba(15, 23, 42, 0.84));
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  border-radius: 26px 0 0 26px;
+  background: linear-gradient(180deg, #38bdf8, rgba(56, 189, 248, 0.28));
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card::after {
+  content: "";
+  position: absolute;
+  width: 160px;
+  height: 160px;
+  top: -90px;
+  right: -75px;
+  border-radius: 999px;
+  background: rgba(56, 189, 248, 0.13);
+  transition: transform 0.3s ease;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card:hover::after {
+  transform: scale(1.12);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-top {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-top > div:not(.kpi-icon) {
+  min-width: 0;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-icon {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  border-radius: 20px;
+  color: #bae6fd;
+  background:
+    linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 116, 144, 0.1));
+  border: 1px solid rgba(56, 189, 248, 0.36);
+  box-shadow:
+    0 12px 28px rgba(56, 189, 248, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-icon svg {
+  width: 29px;
+  height: 29px;
+  stroke-width: 2.2;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card span {
+  color: #aebdd2;
+  font-size: 0.95rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card strong {
+  display: block;
+  margin-top: 10px;
+  color: #f8fafc;
+  font-size: clamp(2rem, 3vw, 2.45rem);
+  line-height: 1;
+  letter-spacing: -0.055em;
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-card p {
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
+  color: #9fb0c8;
+  font-size: 0.94rem;
+  line-height: 1.45;
+}
+
+/* Estados */
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-positivo {
+  border-color: rgba(34, 197, 94, 0.23);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-positivo::before {
+  background: linear-gradient(180deg, #22c55e, rgba(34, 197, 94, 0.28));
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-positivo::after {
+  background: rgba(34, 197, 94, 0.13);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-positivo .kpi-icon {
+  color: #bbf7d0;
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.22), rgba(21, 128, 61, 0.1));
+  border-color: rgba(34, 197, 94, 0.36);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-alerta {
+  border-color: rgba(250, 204, 21, 0.23);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-alerta::before {
+  background: linear-gradient(180deg, #facc15, rgba(250, 204, 21, 0.28));
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-alerta::after {
+  background: rgba(250, 204, 21, 0.13);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-alerta .kpi-icon {
+  color: #fef3c7;
+  background: linear-gradient(135deg, rgba(250, 204, 21, 0.22), rgba(161, 98, 7, 0.1));
+  border-color: rgba(250, 204, 21, 0.36);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-critico {
+  border-color: rgba(239, 68, 68, 0.23);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-critico::before {
+  background: linear-gradient(180deg, #ef4444, rgba(239, 68, 68, 0.28));
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-critico::after {
+  background: rgba(239, 68, 68, 0.13);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-critico .kpi-icon {
+  color: #fecaca;
+  background: linear-gradient(135deg, rgba(239, 68, 68, 0.22), rgba(127, 29, 29, 0.1));
+  border-color: rgba(239, 68, 68, 0.36);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-neutro {
+  border-color: rgba(56, 189, 248, 0.23);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-neutro::before {
+  background: linear-gradient(180deg, #38bdf8, rgba(56, 189, 248, 0.28));
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-neutro::after {
+  background: rgba(56, 189, 248, 0.13);
+}
+
+.tecnicos-page .tecnicos-kpi-grid .kpi-neutro .kpi-icon {
+  color: #bae6fd;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.22), rgba(14, 116, 144, 0.1));
+  border-color: rgba(56, 189, 248, 0.36);
+}
+
+@media (max-width: 900px) {
+  .tecnicos-page .tecnicos-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .tecnicos-page .tecnicos-kpi-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .tecnicos-page .tecnicos-kpi-grid .kpi-card {
+    min-height: 135px;
+    padding: 20px;
+  }
+}
