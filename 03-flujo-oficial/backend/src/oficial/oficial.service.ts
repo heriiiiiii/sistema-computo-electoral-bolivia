@@ -302,16 +302,8 @@ export class OficialService {
     const aperturaMin  = this.n(row.aperturaMinutos);
     const cierreHora   = this.n(row.cierreHora);
     const cierreMin    = this.n(row.cierreMinutos);
-    const aperturaTotal = aperturaHora * 60 + aperturaMin;
-    const cierreTotal   = cierreHora   * 60 + cierreMin;
-    const horarioInvalido =
-      aperturaHora < 0 || aperturaHora > 23 || aperturaMin < 0 || aperturaMin > 59 ||
-      cierreHora   < 0 || cierreHora   > 23 || cierreMin   < 0 || cierreMin   > 59 ||
-      (aperturaTotal === 0 && cierreTotal === 0) ||
-      cierreTotal <= aperturaTotal;
-    // Horario inválido: lo dejamos como observación silenciosa (queda en la columna del acta);
-    // no genera log ni inconsistencia para no inflar los archivos.
-    void horarioInvalido;
+    // Validación horaria detallada (H1..H4) la hace el ValidacionService;
+    // aquí sólo persistimos los valores crudos que vienen del CSV.
 
     const voteData = {
       p1: this.n(row.p1), p2: this.n(row.p2), p3: this.n(row.p3), p4: this.n(row.p4),
@@ -321,6 +313,9 @@ export class OficialService {
       papeletasAnfora: this.n(row.papeletasAnfora),
       papeletasNoUtilizadas: this.n(row.papeletasNoUtilizadas),
       habilitados: this.n(row.votantesHabilitados),
+      aperturaHora, aperturaMinutos: aperturaMin,
+      cierreHora,   cierreMinutos: cierreMin,
+      observaciones: String(row.observaciones || '').trim(),
     };
 
     // Sólo guardamos validaciones con problema (ERROR/WARNING). Las OK son ruido.
@@ -424,7 +419,11 @@ export class OficialService {
   async recalcularActa(actaId: number, usuario: string, ipOrigen: string) {
     const r = await dbQuery(this.pool, `
       SELECT ao.id, ao.codigo_acta, ao.estado, ao.papeletas_en_anfora,
-             ao.votos_blancos, ao.votos_nulos, m.cantidad_habilitada, m.codigo_mesa
+             ao.papeletas_no_utilizadas,
+             ao.votos_blancos, ao.votos_nulos,
+             ao.apertura_hora, ao.apertura_minutos, ao.cierre_hora, ao.cierre_minutos,
+             ao.observacion,
+             m.cantidad_habilitada, m.codigo_mesa
       FROM actas_oficiales ao
       JOIN mesas m ON m.id = ao.mesa_id
       WHERE ao.id = $1
@@ -450,8 +449,13 @@ export class OficialService {
       p1: map.P1 || 0, p2: map.P2 || 0, p3: map.P3 || 0, p4: map.P4 || 0,
       votosValidos: sumaPartidos, votosBlancos: blancos, votosNulos: nulos,
       papeletasAnfora: Number(acta.papeletas_en_anfora) || 0,
-      papeletasNoUtilizadas: 0,
+      papeletasNoUtilizadas: Number(acta.papeletas_no_utilizadas) || 0,
       habilitados: Number(acta.cantidad_habilitada) || 0,
+      aperturaHora: Number(acta.apertura_hora) || 0,
+      aperturaMinutos: Number(acta.apertura_minutos) || 0,
+      cierreHora: Number(acta.cierre_hora) || 0,
+      cierreMinutos: Number(acta.cierre_minutos) || 0,
+      observaciones: String(acta.observacion || ''),
     });
     const tieneErrores = nuevasValidaciones.some(v => v.resultado === 'ERROR');
     const nuevoEstado = tieneErrores ? 'OBSERVADA' : 'VALIDADA';

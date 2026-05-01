@@ -115,20 +115,49 @@ export default function ActaDetalle({ actaId, onClose, onChanged }: Props) {
             {(() => {
               const fallidas = (acta.validaciones || []).filter((v: any) => v.resultado !== 'OK');
               if (fallidas.length === 0) {
-                return <div className="alert alert-ok">✓ Todas las reglas R1..R5 pasaron sin observaciones.</div>;
+                return <div className="alert alert-ok">✓ Todas las reglas pasaron sin observaciones.</div>;
               }
               // Dedup: misma regla puede haberse logueado varias veces si la acta fue re-validada
               const dedup = new Map<string, any>();
               for (const v of fallidas) if (!dedup.has(v.regla)) dedup.set(v.regla, v);
+              const items = [...dedup.values()];
+              const errors = items.filter((v: any) => v.resultado === 'ERROR');
+              const warns  = items.filter((v: any) => v.resultado === 'WARNING');
+
+              // Resumen ejecutivo: por qué la acta está en su estado actual.
+              let resumen: { tono: 'err' | 'warn' | 'ok'; titulo: string; texto: string };
+              if (acta.estado === 'OBSERVADA') {
+                resumen = {
+                  tono: 'err',
+                  titulo: `OBSERVADA — ${errors.length} regla(s) rotas`,
+                  texto: `El acta tiene errores en reglas numéricas (R1..R7), horarios (H1..H4) o causales reportadas en la columna Observaciones del CSV (Ley 026). Revisar el listado para ver el motivo exacto.`,
+                };
+              } else if (warns.length > 0) {
+                resumen = {
+                  tono: 'warn',
+                  titulo: `VALIDADA con ${warns.length} advertencia(s)`,
+                  texto: `Los números calzan y no hay causales graves del CSV. Las advertencias listadas son informativas (delegados ausentes, tolerancias horarias, falta de datos) y NO degradan el estado del acta.`,
+                };
+              } else {
+                resumen = { tono: 'ok', titulo: 'Sin observaciones', texto: '' };
+              }
+
               return (
                 <>
-                  <h3>Reglas con observación ({dedup.size})</h3>
+                  <div className={`alert alert-${resumen.tono}`} style={{ marginTop: 16 }}>
+                    <strong>{resumen.titulo}</strong>
+                    {resumen.texto && <p style={{ margin: '6px 0 0' }}>{resumen.texto}</p>}
+                  </div>
+                  <h3>Reglas con observación ({items.length})</h3>
                   <table className="tbl">
-                    <thead><tr><th>Regla</th><th>Severidad</th><th>Mensaje</th></tr></thead>
+                    <thead><tr><th>Regla</th><th>Tipo</th><th>Severidad</th><th>Por qué</th></tr></thead>
                     <tbody>
-                      {[...dedup.values()].map((v: any, i: number) => (
+                      {items.map((v: any, i: number) => (
                         <tr key={i} className={`row-${v.resultado.toLowerCase()}`}>
-                          <td>{v.regla}</td><td>{v.severidad}</td><td>{v.mensaje}</td>
+                          <td><code>{v.regla}</code></td>
+                          <td>{v.resultado === 'ERROR' ? '⛔ ERROR' : '⚠ WARNING'}</td>
+                          <td>{v.severidad}</td>
+                          <td>{v.mensaje}</td>
                         </tr>
                       ))}
                     </tbody>

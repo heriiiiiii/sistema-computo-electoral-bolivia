@@ -74,3 +74,16 @@ Acta con cualquier ERROR → estado **OBSERVADA** + entrada en `inconsistencias`
 
 Desde el frontend: pestaña **Actas** → clic en una fila → botón **Recalcular y validar**.
 Toma `P1+P2+P3+P4` como verdad y reaplica las reglas.
+
+
+
+
+cd 01-clusters-bases-failover
+docker compose down -v   # ⚠️ borrar volumen para que el cambio en 01-schema (no hubo nuevo, pero sí cambió la lógica de inserts) quede limpio
+docker compose up -d
+# espera ~30s
+
+cd ../03-flujo-oficial
+docker compose build oficial-backend oficial-frontend
+docker compose up -d
+docker compose run --rm csv-automation
