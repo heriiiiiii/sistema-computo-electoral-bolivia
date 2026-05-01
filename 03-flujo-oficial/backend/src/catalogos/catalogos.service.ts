@@ -172,13 +172,8 @@ export class CatalogosService {
         );
         const municipioId = muniRes.rows.length > 0 ? muniRes.rows[0].id : null;
 
-        if (!municipioId) {
-          this.logFile.cargaError({
-            archivo: 'RecintosElectorales.csv',
-            motivo: 'MUNICIPIO_NO_ENCONTRADO',
-            detalle: { codigoTerr, codigoRecinto },
-          });
-        }
+        // municipio_id null no es bloqueante (recinto se inserta igual con FK NULL);
+        // si el recinto no carga, el error real se loguea en el catch de abajo.
 
         await dbQuery(this.pool,
           `INSERT INTO recintos (codigo_recinto, codigo_territorial, municipio_id, nombre, direccion, cantidad_mesas)
