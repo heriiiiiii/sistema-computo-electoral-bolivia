@@ -3,32 +3,61 @@ import { Pool } from 'pg';
 import { DB_POOL } from '../database/database.module';
 import { dbQuery } from '../common/db.util';
 import { AuditoriaService } from '../auditoria/auditoria.service';
+import { LogService } from '../common/log.service';
+
+// 9 departamentos canónicos de Bolivia (no se auto-crean otros)
+const DEPT_CODES: Record<string, string> = {
+  'Chuquisaca': 'CH',
+  'La Paz':     'LP',
+  'Cochabamba': 'CB',
+  'Oruro':      'OR',
+  'Potosí':     'PT',
+  'Tarija':     'TJ',
+  'Santa Cruz': 'SC',
+  'Beni':       'BN',
+  'Pando':      'PD',
+};
+
+// Normaliza claves comparables (sin tildes / case / espacios) para tolerar mojibake.
+function normKey(s: string): string {
+  return (s || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+const DEPT_BY_NORM: Record<string, { nombre: string; codigo: string }> = {};
+for (const [nombre, codigo] of Object.entries(DEPT_CODES)) {
+  DEPT_BY_NORM[normKey(nombre)] = { nombre, codigo };
+}
 
 @Injectable()
 export class CatalogosService {
   constructor(
     @Inject(DB_POOL) private readonly pool: Pool,
     private readonly auditoria: AuditoriaService,
+    private readonly logFile: LogService,
   ) {}
 
-  private async findOrCreateDept(nombre: string, codigoTerr: string): Promise<number> {
-    let r = await dbQuery(this.pool, 'SELECT id FROM departamentos WHERE nombre = $1', [nombre]);
+  private async getOrCreateDept(rawNombre: string): Promise<number | null> {
+    const match = DEPT_BY_NORM[normKey(rawNombre)];
+    if (!match) {
+      this.logFile.cargaError({
+        archivo: 'DistribucionTerritorial.csv',
+        motivo: 'DEPARTAMENTO_DESCONOCIDO',
+        detalle: { recibido: rawNombre },
+      });
+      return null;
+    }
+
+    let r = await dbQuery(this.pool, 'SELECT id FROM departamentos WHERE codigo = $1', [match.codigo]);
     if (r.rows.length > 0) return r.rows[0].id;
 
-    const codigo = 'N' + codigoTerr.charAt(0);
     r = await dbQuery(this.pool,
       `INSERT INTO departamentos (codigo, nombre) VALUES ($1, $2)
-       ON CONFLICT (codigo) DO NOTHING RETURNING id`,
-      [codigo, nombre],
-    );
-    if (r.rows.length > 0) return r.rows[0].id;
-
-    r = await dbQuery(this.pool, 'SELECT id FROM departamentos WHERE nombre = $1', [nombre]);
-    if (r.rows.length > 0) return r.rows[0].id;
-
-    r = await dbQuery(this.pool,
-      `INSERT INTO departamentos (codigo, nombre) VALUES ($1, $2) RETURNING id`,
-      [codigo + '_' + Date.now(), nombre],
+       ON CONFLICT (codigo) DO UPDATE SET nombre = EXCLUDED.nombre RETURNING id`,
+      [match.codigo, match.nombre],
     );
     return r.rows[0].id;
   }
@@ -79,7 +108,12 @@ export class CatalogosService {
 
         let deptId = deptCache.get(deptNombre);
         if (!deptId) {
-          deptId = await this.findOrCreateDept(deptNombre, codigoTerr);
+          const id = await this.getOrCreateDept(deptNombre);
+          if (!id) {
+            errores.push({ row, error: `Departamento desconocido: ${deptNombre}` });
+            continue;
+          }
+          deptId = id;
           deptCache.set(deptNombre, deptId);
         }
 
@@ -97,7 +131,13 @@ export class CatalogosService {
         );
         insertadas++;
       } catch (e) {
-        errores.push({ row, error: e instanceof Error ? e.message : String(e) });
+        const msg = e instanceof Error ? e.message : String(e);
+        errores.push({ row, error: msg });
+        this.logFile.cargaError({
+          archivo: 'DistribucionTerritorial.csv',
+          motivo: 'INSERT_FAIL',
+          detalle: { row, error: msg },
+        });
       }
     }
 
@@ -132,6 +172,14 @@ export class CatalogosService {
         );
         const municipioId = muniRes.rows.length > 0 ? muniRes.rows[0].id : null;
 
+        if (!municipioId) {
+          this.logFile.cargaError({
+            archivo: 'RecintosElectorales.csv',
+            motivo: 'MUNICIPIO_NO_ENCONTRADO',
+            detalle: { codigoTerr, codigoRecinto },
+          });
+        }
+
         await dbQuery(this.pool,
           `INSERT INTO recintos (codigo_recinto, codigo_territorial, municipio_id, nombre, direccion, cantidad_mesas)
            VALUES ($1, $2, $3, $4, $5, $6)
@@ -143,7 +191,13 @@ export class CatalogosService {
         );
         insertados++;
       } catch (e) {
-        errores.push({ row, error: e instanceof Error ? e.message : String(e) });
+        const msg = e instanceof Error ? e.message : String(e);
+        errores.push({ row, error: msg });
+        this.logFile.cargaError({
+          archivo: 'RecintosElectorales.csv',
+          motivo: 'INSERT_FAIL',
+          detalle: { row, error: msg },
+        });
       }
     }
 
@@ -176,6 +230,11 @@ export class CatalogosService {
         );
         if (recintoRes.rows.length === 0) {
           errores.push({ row, error: `Recinto ${codigoRecinto} not found` });
+          this.logFile.cargaError({
+            archivo: 'ActasImpresas.csv',
+            motivo: 'RECINTO_NO_ENCONTRADO',
+            detalle: { codigoRecinto, nroMesa },
+          });
           continue;
         }
         const recintoId = recintoRes.rows[0].id;
@@ -190,7 +249,13 @@ export class CatalogosService {
         );
         insertadas++;
       } catch (e) {
-        errores.push({ row, error: e instanceof Error ? e.message : String(e) });
+        const msg = e instanceof Error ? e.message : String(e);
+        errores.push({ row, error: msg });
+        this.logFile.cargaError({
+          archivo: 'ActasImpresas.csv',
+          motivo: 'INSERT_FAIL',
+          detalle: { row, error: msg },
+        });
       }
     }
 

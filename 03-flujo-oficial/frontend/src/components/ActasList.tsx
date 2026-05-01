@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, Acta } from '../api';
+import ActaDetalle from './ActaDetalle';
 
 const ESTADOS = ['', 'VALIDADA', 'OBSERVADA', 'OFICIALIZADA', 'IMPORTADA', 'RECHAZADA'];
 const PAGE_SIZE = 25;
@@ -18,6 +19,8 @@ export default function ActasList() {
   const [page, setPage] = useState(0);
   const [estado, setEstado] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [openId, setOpenId] = useState<number | null>(null);
+  const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
     let alive = true;
@@ -25,7 +28,7 @@ export default function ActasList() {
       .then(d => { if (alive) { setData(d); setError(null); } })
       .catch(e => { if (alive) setError(e.message); });
     return () => { alive = false; };
-  }, [page, estado]);
+  }, [page, estado, reloadKey]);
 
   const totalPages = data ? Math.ceil(data.total / PAGE_SIZE) : 0;
 
@@ -34,9 +37,18 @@ export default function ActasList() {
       <div className="page-header">
         <div>
           <h2>Actas Oficiales</h2>
-          <p className="muted">{data ? `${data.total} actas en total` : 'Cargando…'}</p>
+          <p className="muted">{data ? `${data.total} actas con el filtro actual` : 'Cargando…'}</p>
         </div>
-        <div className="header-actions">
+        <div className="header-actions" style={{ gap: 8, display: 'flex' }}>
+          {['VALIDADA', 'OBSERVADA', 'OFICIALIZADA', ''].map(s => (
+            <button
+              key={s || 'all'}
+              className={`btn ${estado === s ? 'btn-primary' : 'btn-ghost'} btn-sm`}
+              onClick={() => { setEstado(s); setPage(0); }}
+            >
+              {s || 'Todas'}
+            </button>
+          ))}
           <select className="select" value={estado} onChange={e => { setEstado(e.target.value); setPage(0); }}>
             {ESTADOS.map(s => <option key={s} value={s}>{s || 'Todos los estados'}</option>)}
           </select>
@@ -62,7 +74,7 @@ export default function ActasList() {
           </thead>
           <tbody>
             {data?.actas.map(a => (
-              <tr key={a.id}>
+              <tr key={a.id} onClick={() => setOpenId(a.id)} style={{ cursor: 'pointer' }}>
                 <td><code>{a.codigo_acta}</code></td>
                 <td>{a.numero_mesa}</td>
                 <td><span className="muted">{a.codigo_recinto}</span> {a.recinto_nombre}</td>
@@ -80,6 +92,14 @@ export default function ActasList() {
           </tbody>
         </table>
       </div>
+
+      {openId !== null && (
+        <ActaDetalle
+          actaId={openId}
+          onClose={() => setOpenId(null)}
+          onChanged={() => setReloadKey(k => k + 1)}
+        />
+      )}
 
       {totalPages > 1 && (
         <div className="pagination">

@@ -26,6 +26,9 @@ export default function ActaForm() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [usuarioCarga, setUsuarioCarga] = useState<string>(
+    () => localStorage.getItem('oep:usuarioCarga') || ''
+  );
 
   const updateRow = (i: number, patch: Partial<Row>) => {
     setRows(rs => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
@@ -45,6 +48,11 @@ export default function ActaForm() {
   }, [rows]);
 
   const submit = async () => {
+    if (!usuarioCarga.trim()) {
+      setError('Ingresa el nombre del usuario que registra el acta antes de enviar.');
+      return;
+    }
+    localStorage.setItem('oep:usuarioCarga', usuarioCarga.trim());
     setSubmitting(true);
     setError(null);
     setResult(null);
@@ -61,7 +69,7 @@ export default function ActaForm() {
         votosNulos: n(r.votosNulos),
         observaciones: r.observaciones,
       }));
-      const r = await api.bulkActas(payload);
+      const r = await api.bulkActas(payload, usuarioCarga.trim());
       setResult(r);
     } catch (e: any) {
       setError(e.message);
@@ -83,6 +91,18 @@ export default function ActaForm() {
             {submitting ? 'Enviando…' : `Enviar ${rows.length} acta${rows.length > 1 ? 's' : ''}`}
           </button>
         </div>
+      </div>
+
+      <div className="card form-card">
+        <label className="field field-full">
+          <span className="field-label">Usuario que registra el acta *</span>
+          <input
+            type="text"
+            value={usuarioCarga}
+            onChange={e => setUsuarioCarga(e.target.value)}
+            placeholder="Ej: Juan Pérez (jurado mesa 12)"
+          />
+        </label>
       </div>
 
       {error && <div className="error-box">⚠ {error}</div>}

@@ -7,14 +7,22 @@ export default function CsvUpload() {
   const [submitting, setSubmitting] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
+  const [usuarioCarga, setUsuarioCarga] = useState<string>(
+    () => localStorage.getItem('oep:usuarioCarga') || ''
+  );
 
   const submit = async () => {
     if (!file) return;
+    if (!usuarioCarga.trim()) {
+      setError('Ingresa el nombre del usuario que carga el CSV.');
+      return;
+    }
+    localStorage.setItem('oep:usuarioCarga', usuarioCarga.trim());
     setSubmitting(true);
     setError(null);
     setResult(null);
     try {
-      const r = await api.uploadCsv(file);
+      const r = await api.uploadCsv(file, usuarioCarga.trim());
       setResult(r);
     } catch (e: any) {
       setError(e.message);
@@ -30,6 +38,18 @@ export default function CsvUpload() {
           <h2>Cargar CSV Oficial</h2>
           <p className="muted">Sube un archivo CSV con la transcripción oficial de actas. El backend lo valida fila por fila.</p>
         </div>
+      </div>
+
+      <div className="card form-card">
+        <label className="field field-full">
+          <span className="field-label">Usuario que carga el CSV *</span>
+          <input
+            type="text"
+            value={usuarioCarga}
+            onChange={e => setUsuarioCarga(e.target.value)}
+            placeholder="Ej: María López (operador OEP)"
+          />
+        </label>
       </div>
 
       <div

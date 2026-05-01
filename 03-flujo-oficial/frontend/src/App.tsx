@@ -1,20 +1,18 @@
 import { useState } from 'react';
-import Dashboard from './components/Dashboard';
 import ActaForm from './components/ActaForm';
 import CsvUpload from './components/CsvUpload';
 import ActasList from './components/ActasList';
 
-type Tab = 'dashboard' | 'acta' | 'csv' | 'listado';
+type Tab = 'acta' | 'csv' | 'listado';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: '▣' },
-  { id: 'acta', label: 'Cargar Acta', icon: '✎' },
-  { id: 'csv', label: 'Cargar CSV', icon: '↥' },
-  { id: 'listado', label: 'Listado', icon: '☰' },
+  { id: 'csv',     label: 'Cargar CSV',  icon: '↥' },
+  { id: 'acta',    label: 'Cargar Acta', icon: '✎' },
+  { id: 'listado', label: 'Actas',       icon: '☰' },
 ];
 
 export default function App() {
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const [tab, setTab] = useState<Tab>('csv');
 
   return (
     <div className="app">
@@ -41,9 +39,8 @@ export default function App() {
       </header>
 
       <main className="content">
-        {tab === 'dashboard' && <Dashboard />}
-        {tab === 'acta' && <ActaForm />}
         {tab === 'csv' && <CsvUpload />}
+        {tab === 'acta' && <ActaForm />}
         {tab === 'listado' && <ActasList />}
       </main>
 

@@ -130,6 +130,20 @@ export class OficialController {
     }
   }
 
+  // POST /api/oficial/actas/:id/recalcular
+  @Post('actas/:id/recalcular')
+  @HttpCode(200)
+  async recalcular(@Param('id') id: string, @Body() body: any) {
+    try {
+      const result = await this.svc.recalcularActa(
+        parseInt(id), body?.usuario || 'WEB_UI', body?.ipOrigen || 'web-ui',
+      );
+      return okResponse(result, 'Acta recalculada');
+    } catch (e) {
+      return errResponse(errorMessage(e), 'RECALCULAR_ACTA_ERROR');
+    }
+  }
+
   // POST /api/oficial/comparar-rrv
   @Post('comparar-rrv')
   @HttpCode(200)

@@ -4,19 +4,19 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 10103,Chuquisaca,Oropeza,Poroma
 10201,Chuquisaca,Azurduy,Azurduy
 10202,Chuquisaca,Azurduy,Tarvita
-10301,Chuquisaca,Zud√°√±ez,Villa Zud√°√±ez
-10302,Chuquisaca,Zud√°√±ez,Presto
-10303,Chuquisaca,Zud√°√±ez,Villa Mojocoya
-10304,Chuquisaca,Zud√°√±ez,Icla
+10301,Chuquisaca,Zud·Òez,Villa Zud·Òez
+10302,Chuquisaca,Zud·Òez,Presto
+10303,Chuquisaca,Zud·Òez,Villa Mojocoya
+10304,Chuquisaca,Zud·Òez,Icla
 10401,Chuquisaca,Tomina,Padilla
 10402,Chuquisaca,Tomina,Tomina
 10403,Chuquisaca,Tomina,Sopachuy
-10404,Chuquisaca,Tomina,Villa Alcal√°
+10404,Chuquisaca,Tomina,Villa Alcal·
 10405,Chuquisaca,Tomina,El Villar
 10501,Chuquisaca,Hernando Siles,Monteagudo
 10502,Chuquisaca,Hernando Siles,Huacareta
-10601,Chuquisaca,Yampar√°ez,Tarabuco
-10602,Chuquisaca,Yampar√°ez,Yampar√°ez
+10601,Chuquisaca,Yampar·ez,Tarabuco
+10602,Chuquisaca,Yampar·ez,Yampar·ez
 10701,Chuquisaca,Nor Cinti,Camargo
 10702,Chuquisaca,Nor Cinti,San Lucas
 10703,Chuquisaca,Nor Cinti,Incahuasi
@@ -25,9 +25,9 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 10901,Chuquisaca,Sud Cinti,Villa Abecia
 10902,Chuquisaca,Sud Cinti,Culpina
 10903,Chuquisaca,Sud Cinti,Las Carreras
-11001,Chuquisaca,Luis Calvo,Villa Vaca Guzm√°n (Muyupampa)
+11001,Chuquisaca,Luis Calvo,Villa Vaca Guzm·n (Muyupampa)
 11002,Chuquisaca,Luis Calvo,Huacaya
-11003,Chuquisaca,Luis Calvo,Macharet√≠
+11003,Chuquisaca,Luis Calvo,MacharetÌ
 20101,La Paz,Murillo,La Paz
 20102,La Paz,Murillo,Palca
 20103,La Paz,Murillo,Mecapaca
@@ -43,8 +43,8 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 20302,La Paz,Pacajes,Caquiaviri
 20303,La Paz,Pacajes,Calacoto
 20304,La Paz,Pacajes,Comanche
-20305,La Paz,Pacajes,Chara√±a
-20306,La Paz,Pacajes,Waldo Ballivi√°n
+20305,La Paz,Pacajes,CharaÒa
+20306,La Paz,Pacajes,Waldo Ballivi·n
 20307,La Paz,Pacajes,Nazacara de Pacajes
 20308,La Paz,Pacajes,Callapa
 20401,La Paz,Camacho,Puerto Acosta
@@ -52,9 +52,9 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 20403,La Paz,Camacho,Puerto Carabuco
 20404,La Paz,Camacho,Humanata
 20405,La Paz,Camacho,Escoma
-20501,La Paz,Mu√±ecas,Chuma
-20502,La Paz,Mu√±ecas,Ayata
-20503,La Paz,Mu√±ecas,Aucapata
+20501,La Paz,MuÒecas,Chuma
+20502,La Paz,MuÒecas,Ayata
+20503,La Paz,MuÒecas,Aucapata
 20601,La Paz,Larecaja,Sorata
 20602,La Paz,Larecaja,Guanay
 20603,La Paz,Larecaja,Tacacoma
@@ -69,8 +69,8 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 20802,La Paz,Ingavi,Guaqui
 20803,La Paz,Ingavi,Tiahuanaco
 20804,La Paz,Ingavi,Desaguadero
-20805,La Paz,Ingavi,San Andr√©s de Machaca
-20806,La Paz,Ingavi,Jes√∫s de Machaca
+20805,La Paz,Ingavi,San AndrÈs de Machaca
+20806,La Paz,Ingavi,Jes˙s de Machaca
 20807,La Paz,Ingavi,Taraco
 20901,La Paz,Loayza,Luribay
 20902,La Paz,Loayza,Sapahaqui
@@ -91,7 +91,7 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 21201,La Paz,Los Andes,Pucarani
 21202,La Paz,Los Andes,Laja
 21203,La Paz,Los Andes,Batallas
-21204,La Paz,Los Andes,Puerto P√©rez
+21204,La Paz,Los Andes,Puerto PÈrez
 21301,La Paz,Aroma,Sica Sica
 21302,La Paz,Aroma,Umala
 21303,La Paz,Aroma,Ayo Ayo
@@ -111,8 +111,8 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 21801,La Paz,Gualberto Villarroel,San Pedro de Curahuara
 21802,La Paz,Gualberto Villarroel,Papel Pampa
 21803,La Paz,Gualberto Villarroel,Chacarilla
-21901,La Paz,General Jos√© Manuel Pando,Santiago de Machaca
-21902,La Paz,General Jos√© Manuel Pando,Catacora
+21901,La Paz,General JosÈ Manuel Pando,Santiago de Machaca
+21902,La Paz,General JosÈ Manuel Pando,Catacora
 22001,La Paz,Caranavi,Caranavi
 22002,La Paz,Caranavi,Alto Beni
 30101,Cochabamba,Cercado,Cochabamba
@@ -131,11 +131,11 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 30601,Cochabamba,Arque,Arque
 30602,Cochabamba,Arque,Tacopaya
 30701,Cochabamba,Capinota,Capinota
-30702,Cochabamba,Capinota,Santiv√°√±ez
+30702,Cochabamba,Capinota,Santiv·Òez
 30703,Cochabamba,Capinota,Sicaya
-30801,Cochabamba,Germ√°n Jord√°n,Cliza
-30802,Cochabamba,Germ√°n Jord√°n,Toco
-30803,Cochabamba,Germ√°n Jord√°n,Tolata
+30801,Cochabamba,Germ·n Jord·n,Cliza
+30802,Cochabamba,Germ·n Jord·n,Toco
+30803,Cochabamba,Germ·n Jord·n,Tolata
 30901,Cochabamba,Quillacollo,Quillacollo
 30902,Cochabamba,Quillacollo,Sipe Sipe
 30903,Cochabamba,Quillacollo,Tiquipaya
@@ -144,13 +144,13 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 31001,Cochabamba,Chapare,Sacaba
 31002,Cochabamba,Chapare,Colomi
 31003,Cochabamba,Chapare,Villa Tunari
-31101,Cochabamba,Tapacar√≠,Tapacar√≠
+31101,Cochabamba,TapacarÌ,TapacarÌ
 31201,Cochabamba,Carrasco,Totora
 31202,Cochabamba,Carrasco,Pojo
 31203,Cochabamba,Carrasco,Pocona
-31204,Cochabamba,Carrasco,Chimor√©
+31204,Cochabamba,Carrasco,ChimorÈ
 31205,Cochabamba,Carrasco,Puerto Villarroel
-31206,Cochabamba,Carrasco,Entre R√≠os
+31206,Cochabamba,Carrasco,Entre RÌos
 31301,Cochabamba,Mizque,Mizque
 31302,Cochabamba,Mizque,Vila Vila
 31303,Cochabamba,Mizque,Alalay
@@ -159,7 +159,7 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 31403,Cochabamba,Punata,San Benito
 31404,Cochabamba,Punata,Tacachi
 31405,Cochabamba,Punata,Cuchumuela
-31501,Cochabamba,Bol√≠var,Bol√≠var
+31501,Cochabamba,BolÌvar,BolÌvar
 31601,Cochabamba,Tiraque,Tiraque
 31602,Cochabamba,Tiraque,Shinahota
 40101,Oruro,Cercado,Oruro
@@ -177,9 +177,9 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 40503,Oruro,Litoral,Cruz de Machacamarca
 40504,Oruro,Litoral,Yunguyo de Litoral
 40505,Oruro,Litoral,Esmeralda
-40601,Oruro,Poop√≥,Poop√≥
-40602,Oruro,Poop√≥,Paz√±a
-40603,Oruro,Poop√≥,Antequera
+40601,Oruro,PoopÛ,PoopÛ
+40602,Oruro,PoopÛ,PazÒa
+40603,Oruro,PoopÛ,Antequera
 40701,Oruro,Dalence,Huanuni
 40702,Oruro,Dalence,Machacamarca
 40801,Oruro,Ladislao Cabrera,Salinas de Garci Mendoza
@@ -187,73 +187,73 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 40901,Oruro,Sabaya,Sabaya
 40902,Oruro,Sabaya,Coipasa
 40903,Oruro,Sabaya,Chipaya
-41001,Oruro,Saucar√≠,Toledo
-41101,Oruro,Tom√°s Barr√≥n,Eucaliptus
+41001,Oruro,SaucarÌ,Toledo
+41101,Oruro,Tom·s BarrÛn,Eucaliptus
 41201,Oruro,Sud Carangas,Santiago de Andamarca
-41202,Oruro,Sud Carangas,Bel√©n de Andamarca
+41202,Oruro,Sud Carangas,BelÈn de Andamarca
 41301,Oruro,San Pedro de Totora,Totora
-41401,Oruro,Sebasti√°n Pagador,Santiago de Huari
+41401,Oruro,Sebasti·n Pagador,Santiago de Huari
 41501,Oruro,Mejillones,La Rivera
 41502,Oruro,Mejillones,Todos Santos
 41503,Oruro,Mejillones,Carangas
 41601,Oruro,Nor Carangas,Huayllamarca
-50101,Potos√≠,Tom√°s Fr√≠as,Potos√≠
-50102,Potos√≠,Tom√°s Fr√≠as,Tinguipaya
-50103,Potos√≠,Tom√°s Fr√≠as,Yocalla
-50104,Potos√≠,Tom√°s Fr√≠as,Urmiri
-50201,Potos√≠,Rafael Bustillo,Unc√≠a
-50202,Potos√≠,Rafael Bustillo,Chayanta
-50203,Potos√≠,Rafael Bustillo,Llallagua
-50204,Potos√≠,Rafael Bustillo,Chuquihuta
-50301,Potos√≠,Cornelio Saavedra,Betanzos
-50302,Potos√≠,Cornelio Saavedra,Chaqu√≠
-50303,Potos√≠,Cornelio Saavedra,Tacobamba
-50401,Potos√≠,Chayanta,Colquechaca
-50402,Potos√≠,Chayanta,Ravelo
-50403,Potos√≠,Chayanta,Pocoata
-50404,Potos√≠,Chayanta,Ocur√≠
-50405,Potos√≠,Chayanta,San Pedro de Macha
-50501,Potos√≠,Charcas,San Pedro de Buena Vista
-50502,Potos√≠,Charcas,Toro Toro
-50601,Potos√≠,Nor Chichas,Cotagaita
-50602,Potos√≠,Nor Chichas,Vitichi
-50701,Potos√≠,Alonso de Ib√°√±ez,Sacaca
-50702,Potos√≠,Alonso de Ib√°√±ez,Caripuyo
-50801,Potos√≠,Sud Chichas,Tupiza
-50802,Potos√≠,Sud Chichas,Atocha
-50901,Potos√≠,Nor L√≠pez,Colcha K
-50902,Potos√≠,Nor L√≠pez,San Pedro de Quemes
-51001,Potos√≠,Sud L√≠pez,San Pablo de L√≠pez
-51002,Potos√≠,Sud L√≠pez,Mojinete
-51003,Potos√≠,Sud L√≠pez,San Antonio de Esmoruco
-51101,Potos√≠,Linares,Puna
-51102,Potos√≠,Linares,Caiza D
-51103,Potos√≠,Linares,Ckochas
-51201,Potos√≠,Quijarro,Uyuni
-51202,Potos√≠,Quijarro,Tomave
-51203,Potos√≠,Quijarro,Porco
-51301,Potos√≠,General Bilbao,Arampampa
-51302,Potos√≠,General Bilbao,Acasio
-51401,Potos√≠,Daniel Campos,Llica
-51402,Potos√≠,Daniel Campos,Tahua
-51501,Potos√≠,Modesto Omiste,Villaz√≥n
-51601,Potos√≠,Enrique Baldivieso,San Agust√≠n
+50101,PotosÌ,Tom·s FrÌas,PotosÌ
+50102,PotosÌ,Tom·s FrÌas,Tinguipaya
+50103,PotosÌ,Tom·s FrÌas,Yocalla
+50104,PotosÌ,Tom·s FrÌas,Urmiri
+50201,PotosÌ,Rafael Bustillo,UncÌa
+50202,PotosÌ,Rafael Bustillo,Chayanta
+50203,PotosÌ,Rafael Bustillo,Llallagua
+50204,PotosÌ,Rafael Bustillo,Chuquihuta
+50301,PotosÌ,Cornelio Saavedra,Betanzos
+50302,PotosÌ,Cornelio Saavedra,ChaquÌ
+50303,PotosÌ,Cornelio Saavedra,Tacobamba
+50401,PotosÌ,Chayanta,Colquechaca
+50402,PotosÌ,Chayanta,Ravelo
+50403,PotosÌ,Chayanta,Pocoata
+50404,PotosÌ,Chayanta,OcurÌ
+50405,PotosÌ,Chayanta,San Pedro de Macha
+50501,PotosÌ,Charcas,San Pedro de Buena Vista
+50502,PotosÌ,Charcas,Toro Toro
+50601,PotosÌ,Nor Chichas,Cotagaita
+50602,PotosÌ,Nor Chichas,Vitichi
+50701,PotosÌ,Alonso de Ib·Òez,Sacaca
+50702,PotosÌ,Alonso de Ib·Òez,Caripuyo
+50801,PotosÌ,Sud Chichas,Tupiza
+50802,PotosÌ,Sud Chichas,Atocha
+50901,PotosÌ,Nor LÌpez,Colcha K
+50902,PotosÌ,Nor LÌpez,San Pedro de Quemes
+51001,PotosÌ,Sud LÌpez,San Pablo de LÌpez
+51002,PotosÌ,Sud LÌpez,Mojinete
+51003,PotosÌ,Sud LÌpez,San Antonio de Esmoruco
+51101,PotosÌ,Linares,Puna
+51102,PotosÌ,Linares,Caiza D
+51103,PotosÌ,Linares,Ckochas
+51201,PotosÌ,Quijarro,Uyuni
+51202,PotosÌ,Quijarro,Tomave
+51203,PotosÌ,Quijarro,Porco
+51301,PotosÌ,General Bilbao,Arampampa
+51302,PotosÌ,General Bilbao,Acasio
+51401,PotosÌ,Daniel Campos,Llica
+51402,PotosÌ,Daniel Campos,Tahua
+51501,PotosÌ,Modesto Omiste,VillazÛn
+51601,PotosÌ,Enrique Baldivieso,San AgustÌn
 60101,Tarija,Cercado,Tarija
 60201,Tarija,Arce,Padcaya
 60202,Tarija,Arce,Bermejo
 60301,Tarija,Gran Chaco,Yacuiba
-60302,Tarija,Gran Chaco,Carapar√≠
+60302,Tarija,Gran Chaco,CaraparÌ
 60303,Tarija,Gran Chaco,Villa Montes
-60401,Tarija,Jos√© Mar√≠a Avil√©s,Uriondo
-60402,Tarija,Jos√© Mar√≠a Avil√©s,Yunchar√°
-60501,Tarija,M√©ndez,San Lorenzo
-60502,Tarija,M√©ndez,El Puente
-60601,Tarija,O'Connor,Entre R√≠os
-70101,Santa Cruz,Andr√©s Ib√°√±ez,Santa Cruz de la Sierra
-70102,Santa Cruz,Andr√©s Ib√°√±ez,Cotoca
-70103,Santa Cruz,Andr√©s Ib√°√±ez,Porongo
-70104,Santa Cruz,Andr√©s Ib√°√±ez,La Guardia
-70105,Santa Cruz,Andr√©s Ib√°√±ez,El Torno
+60401,Tarija,JosÈ MarÌa AvilÈs,Uriondo
+60402,Tarija,JosÈ MarÌa AvilÈs,Yunchar·
+60501,Tarija,MÈndez,San Lorenzo
+60502,Tarija,MÈndez,El Puente
+60601,Tarija,O'Connor,Entre RÌos
+70101,Santa Cruz,AndrÈs Ib·Òez,Santa Cruz de la Sierra
+70102,Santa Cruz,AndrÈs Ib·Òez,Cotoca
+70103,Santa Cruz,AndrÈs Ib·Òez,Porongo
+70104,Santa Cruz,AndrÈs Ib·Òez,La Guardia
+70105,Santa Cruz,AndrÈs Ib·Òez,El Torno
 70201,Santa Cruz,Warnes,Warnes
 70202,Santa Cruz,Warnes,Okinawa Uno
 70301,Santa Cruz,Velasco,San Ignacio de Velasco
@@ -261,26 +261,26 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 70303,Santa Cruz,Velasco,San Rafael de Velasco
 70401,Santa Cruz,Ichilo,Buena Vista
 70402,Santa Cruz,Ichilo,San Carlos
-70403,Santa Cruz,Ichilo,Villa Yapacan√≠
-70404,Santa Cruz,Ichilo,San Juan de Yapacan√≠
-70501,Santa Cruz,Chiquitos,San Jos√© de Chiquitos
-70502,Santa Cruz,Chiquitos,Pail√≥n
-70503,Santa Cruz,Chiquitos,Robor√©
+70403,Santa Cruz,Ichilo,Villa YapacanÌ
+70404,Santa Cruz,Ichilo,San Juan de YapacanÌ
+70501,Santa Cruz,Chiquitos,San JosÈ de Chiquitos
+70502,Santa Cruz,Chiquitos,PailÛn
+70503,Santa Cruz,Chiquitos,RoborÈ
 70601,Santa Cruz,Sara,Portachuelo
 70602,Santa Cruz,Sara,Santa Rosa del Sara
-70603,Santa Cruz,Sara,Colpa B√©lgica
+70603,Santa Cruz,Sara,Colpa BÈlgica
 70701,Santa Cruz,Cordillera,Lagunillas
 70702,Santa Cruz,Cordillera,Charagua
 70703,Santa Cruz,Cordillera,Cabezas
 70704,Santa Cruz,Cordillera,Cuevo
-70705,Santa Cruz,Cordillera,Guti√©rrez (Kereimba Iyambae)
+70705,Santa Cruz,Cordillera,GutiÈrrez (Kereimba Iyambae)
 70706,Santa Cruz,Cordillera,Camiri
 70707,Santa Cruz,Cordillera,Boyuibe
 70801,Santa Cruz,Vallegrande,Vallegrande
 70802,Santa Cruz,Vallegrande,El Trigal
 70803,Santa Cruz,Vallegrande,Moro Moro
 70804,Santa Cruz,Vallegrande,Postrervalle
-70805,Santa Cruz,Vallegrande,Pucar√°
+70805,Santa Cruz,Vallegrande,Pucar·
 70901,Santa Cruz,Florida,Samaipata
 70902,Santa Cruz,Florida,Pampagrande
 70903,Santa Cruz,Florida,Mairana
@@ -288,54 +288,713 @@ CodigoTerritorial,Departamento,Municipio,Provincia
 71001,Santa Cruz,Obispo Santistevan,Montero
 71002,Santa Cruz,Obispo Santistevan,General Saavedra
 71003,Santa Cruz,Obispo Santistevan,Mineros
-71004,Santa Cruz,Obispo Santistevan,Fern√°ndez Alonso
+71004,Santa Cruz,Obispo Santistevan,Fern·ndez Alonso
 71005,Santa Cruz,Obispo Santistevan,San Pedro
-71101,Santa Cruz,√ëuflo de Chaves,Concepci√≥n
-71102,Santa Cruz,√ëuflo de Chaves,San Javier
-71103,Santa Cruz,√ëuflo de Chaves,San Juli√°n
-71104,Santa Cruz,√ëuflo de Chaves,San Ram√≥n
-71105,Santa Cruz,√ëuflo de Chaves,San Antonio de Lomer√≠o
-71106,Santa Cruz,√ëuflo de Chaves,Cuatro Ca√±adas
-71201,Santa Cruz,√Ångel Sand√≥val,San Mat√≠as
+71101,Santa Cruz,—uflo de Chaves,ConcepciÛn
+71102,Santa Cruz,—uflo de Chaves,San Javier
+71103,Santa Cruz,—uflo de Chaves,San Juli·n
+71104,Santa Cruz,—uflo de Chaves,San RamÛn
+71105,Santa Cruz,—uflo de Chaves,San Antonio de LomerÌo
+71106,Santa Cruz,—uflo de Chaves,Cuatro CaÒadas
+71201,Santa Cruz,¡ngel SandÛval,San MatÌas
 71301,Santa Cruz,Caballero,Comarapa
 71302,Santa Cruz,Caballero,Saipina
-71401,Santa Cruz,Germ√°n Busch,Puerto Su√°rez
-71402,Santa Cruz,Germ√°n Busch,Puerto Quijarro
-71403,Santa Cruz,Germ√°n Busch,El Carmen Rivero T√≥rrez
-71501,Santa Cruz,Guarayos,Ascensi√≥n de Guarayos
-71502,Santa Cruz,Guarayos,Urubich√°
+71401,Santa Cruz,Germ·n Busch,Puerto Su·rez
+71402,Santa Cruz,Germ·n Busch,Puerto Quijarro
+71403,Santa Cruz,Germ·n Busch,El Carmen Rivero TÛrrez
+71501,Santa Cruz,Guarayos,AscensiÛn de Guarayos
+71502,Santa Cruz,Guarayos,Urubich·
 71503,Santa Cruz,Guarayos,El Puente
 80101,Beni,Cercado,Trinidad
 80102,Beni,Cercado,San Javier
-80201,Beni,Vaca D√≠ez,Riberalta
-80202,Beni,Vaca D√≠ez,Guayaramer√≠n
-80301,Beni,General Jos√© Ballivi√°n,Reyes
-80302,Beni,General Jos√© Ballivi√°n,San Borja
-80303,Beni,General Jos√© Ballivi√°n,Santa Rosa
-80304,Beni,General Jos√© Ballivi√°n,Rurrenabaque
+80201,Beni,Vaca DÌez,Riberalta
+80202,Beni,Vaca DÌez,GuayaramerÌn
+80301,Beni,General JosÈ Ballivi·n,Reyes
+80302,Beni,General JosÈ Ballivi·n,San Borja
+80303,Beni,General JosÈ Ballivi·n,Santa Rosa
+80304,Beni,General JosÈ Ballivi·n,Rurrenabaque
 80401,Beni,Yacuma,Santa Ana del Yacuma
-80402,Beni,Yacuma,Exaltaci√≥n
+80402,Beni,Yacuma,ExaltaciÛn
 80501,Beni,Moxos,San Ignacio de Moxos
-80601,Beni,Marb√°n,Loreto
-80602,Beni,Marb√°n,San Andr√©s
-80701,Beni,Mamor√©,San Joaqu√≠n
-80702,Beni,Mamor√©,San Ram√≥n
-80703,Beni,Mamor√©,Puerto Siles
-80801,Beni,It√©nez,Magdalena
-80802,Beni,It√©nez,Baures
-80803,Beni,It√©nez,Huacaraje
-90101,Pando,Nicol√°s Su√°rez,Cobija
-90102,Pando,Nicol√°s Su√°rez,Porvenir
-90103,Pando,Nicol√°s Su√°rez,Bolpebra
-90104,Pando,Nicol√°s Su√°rez,Bella Flor
+80601,Beni,Marb·n,Loreto
+80602,Beni,Marb·n,San AndrÈs
+80701,Beni,MamorÈ,San JoaquÌn
+80702,Beni,MamorÈ,San RamÛn
+80703,Beni,MamorÈ,Puerto Siles
+80801,Beni,ItÈnez,Magdalena
+80802,Beni,ItÈnez,Baures
+80803,Beni,ItÈnez,Huacaraje
+90101,Pando,Nicol·s Su·rez,Cobija
+90102,Pando,Nicol·s Su·rez,Porvenir
+90103,Pando,Nicol·s Su·rez,Bolpebra
+90104,Pando,Nicol·s Su·rez,Bella Flor
 90201,Pando,Manuripi,Puerto Rico
 90202,Pando,Manuripi,San Pedro
 90203,Pando,Manuripi,Filadelfia
 90301,Pando,Madre de Dios,Puerto Gonzalo Moreno
 90302,Pando,Madre de Dios,San Lorenzo
 90303,Pando,Madre de Dios,Sena
-90401,Pando,Abun√°,Santa Rosa del Abun√°
-90402,Pando,Abun√°,Ingavi
-90501,Pando,General Federico Rom√°n,Nueva Esperanza
-90502,Pando,General Federico Rom√°n,Villa Nueva
-90503,Pando,General Federico Rom√°n,Santos Mercado
+90401,Pando,Abun·,Santa Rosa del Abun·
+90402,Pando,Abun·,Ingavi
+90501,Pando,General Federico Rom·n,Nueva Esperanza
+90502,Pando,General Federico Rom·n,Villa Nueva
+90503,Pando,General Federico Rom·n,Santos Mercado
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,
+,,,

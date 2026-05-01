@@ -53,10 +53,6 @@ CREATE INDEX IF NOT EXISTS idx_auditoria_tipo_accion       ON auditoria_oficial(
 CREATE INDEX IF NOT EXISTS idx_auditoria_fecha             ON auditoria_oficial(fecha_hora DESC);
 CREATE INDEX IF NOT EXISTS idx_auditoria_usuario           ON auditoria_oficial(usuario_accion);
 
--- ── Revisiones ────────────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS idx_revisiones_acta             ON revisiones_oficiales(acta_oficial_id);
-CREATE INDEX IF NOT EXISTS idx_revisiones_decision         ON revisiones_oficiales(decision);
-
 -- ── Comparaciones ─────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_comparaciones_codigo_mesa   ON comparaciones_rrv_oficial(codigo_mesa);
 CREATE INDEX IF NOT EXISTS idx_comparaciones_estado        ON comparaciones_rrv_oficial(estado);

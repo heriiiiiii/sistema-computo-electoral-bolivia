@@ -69,6 +69,18 @@ export const api = {
       },
     ),
 
+  getActaDetalle: (id: number) => request<any>(`/oficial/actas/${id}`),
+
+  recalcularActa: (id: number) =>
+    request<{ actaId: number; codigoActa: string; estadoAnterior: string; estadoNuevo: string; votosValidos: number; totalVotos: number }>(
+      `/oficial/actas/${id}/recalcular`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ usuario: 'WEB_UI', ipOrigen: 'web-ui' }),
+      },
+    ),
+
   uploadCsv: (file: File, usuarioCarga = 'WEB_UI') => {
     const fd = new FormData();
     fd.append('archivo', file);

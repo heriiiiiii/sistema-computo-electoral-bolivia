@@ -288,3 +288,34 @@ code { font-family: "JetBrains Mono", ui-monospace, "Cascadia Code", Menlo, mono
   .party-row { grid-template-columns: 110px 1fr 90px; gap: 8px; }
   .content { padding: 18px; }
 }
+
+/* ── Modal de Detalle de Acta ─────────────────────────────────────── */
+.modal-back { position: fixed; inset: 0; background: rgba(10,12,20,.55); display: flex; align-items: flex-start; justify-content: center; padding: 40px 16px; z-index: 50; overflow-y: auto; }
+.modal { background: var(--bg-card, #1a1d29); color: inherit; border-radius: 12px; padding: 24px; max-width: 900px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 16px; border-bottom: 1px solid #2a2e3e; padding-bottom: 12px; }
+.modal-head h2 { margin: 0 0 4px; font-size: 1.25rem; }
+.modal-head p { margin: 0; color: #8a90a3; font-size: .85rem; }
+.btn-ghost { background: transparent; border: 1px solid #2a2e3e; color: inherit; border-radius: 6px; width: 32px; height: 32px; cursor: pointer; }
+.kv-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 12px 0 20px; }
+.kv-grid > div { background: rgba(255,255,255,.03); padding: 10px 12px; border-radius: 8px; }
+.kv-grid label { display: block; font-size: .72rem; text-transform: uppercase; color: #8a90a3; margin-bottom: 4px; }
+.kv-grid strong { font-size: 1rem; }
+.tbl { width: 100%; border-collapse: collapse; margin: 8px 0 20px; }
+.tbl th, .tbl td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a2e3e; font-size: .9rem; }
+.tbl th { font-weight: 600; color: #8a90a3; font-size: .75rem; text-transform: uppercase; }
+.row-total td { font-weight: 700; background: rgba(255,255,255,.03); }
+.row-error td { color: #ff7a7a; }
+.row-warning td { color: #ffc97a; }
+.row-ok td { color: inherit; }
+.recalc-box { background: rgba(255,201,122,.08); border: 1px solid rgba(255,201,122,.3); border-radius: 8px; padding: 14px; margin: 16px 0; }
+.recalc-box p { margin: 0 0 10px; line-height: 1.45; }
+.btn-primary { background: #4f7cff; color: white; border: 0; border-radius: 8px; padding: 10px 18px; font-weight: 600; cursor: pointer; }
+.btn-primary:disabled { opacity: .6; cursor: not-allowed; }
+.alert { padding: 10px 14px; border-radius: 8px; margin: 8px 0; font-size: .9rem; }
+.alert-ok { background: rgba(80,200,120,.12); color: #76e3a4; }
+.alert-err { background: rgba(255,80,80,.12); color: #ff8a8a; }
+.badge { padding: 3px 8px; border-radius: 4px; font-size: .75rem; }
+.badge-validada { background: rgba(80,200,120,.2); color: #76e3a4; }
+.badge-observada { background: rgba(255,201,122,.2); color: #ffc97a; }
+.badge-rechazada { background: rgba(255,80,80,.2); color: #ff8a8a; }
+.badge-importada, .badge-validando, .badge-oficializada { background: rgba(120,140,180,.2); color: #aab2c5; }
