@@ -217,7 +217,7 @@ export default function BoliviaMap({
               <span>DEPARTAMENTO ACTIVO</span>
               <strong>{activeDept.name}</strong>
               <p className="map-info-note">
-                No existen datos cargados para este departamento en el nivel actual.
+                No existen datos validados para este departamento en el nivel actual.
               </p>
             </div>
           </div>

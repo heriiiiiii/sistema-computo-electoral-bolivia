@@ -26,10 +26,7 @@ import type {
   VoteTypeResult
 } from '../types/dashboard.types';
 import { formatNumber } from '../utils/formatters';
-import {
-  calcularConfiabilidadRRV,
-  calcularMargenVictoria
-} from '../utils/calculations';
+
 import '../styles/dashboard-home.css';
 
 export default function DashboardHome() {
@@ -69,19 +66,7 @@ export default function DashboardHome() {
     return <div className="loading-card">Cargando dashboard nacional...</div>;
   }
 
-  const confiabilidad = calcularConfiabilidadRRV({
-    actasValidadas: resumen.rrv.actasValidadas,
-    actasProcesadas: resumen.rrv.actasProcesadas,
-    actasSospechosas: resumen.rrv.actasSospechosas,
-    actasRechazadas: resumen.rrv.actasRechazadas
-  });
-
-  const margen = calcularMargenVictoria(
-    candidatos.map((candidato) => ({
-      nombre: candidato.candidato,
-      votos: candidato.votosRRV
-    }))
-  );
+ 
     const voteTypes: VoteTypeResult[] = [
   {
     tipo: 'VALIDOS',
@@ -114,17 +99,6 @@ export default function DashboardHome() {
             inconsistencias reportadas y disponibilidad técnica. Este módulo no modifica
             resultados ni escribe en bases de datos.
           </p>
-        </div>
-
-        <div className="hero-metrics">
-          <div>
-            <strong>{confiabilidad.toFixed(1)}%</strong>
-            <span>Confiabilidad RRV</span>
-          </div>
-          <div>
-            <strong>{margen.toFixed(2)}%</strong>
-            <span>Margen de victoria</span>
-          </div>
         </div>
       </div>
 

@@ -1,14 +1,22 @@
-import { useEffect, useMemo, useState } from 'react';
-import { FileCheck2, FileClock, FileX2, Layers3 } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Database,
+  FileCheck2,
+  FileX2,
+  Layers3,
+  RefreshCw
+} from 'lucide-react';
 import { dashboardApi } from '../api/dashboard.api';
 import KpiCard from '../components/cards/KpiCard';
 import ActStatusDonutChart from '../components/charts/ActStatusDonutChart';
-import ActasPorHoraChart from '../components/charts/ActasPorHoraChart';
 import FiltersPanel from '../components/filters/FiltersPanel';
 import ActasTable from '../components/tables/ActasTable';
 import type {
   ActStatusCount,
   ActaDigitalizada,
+  DashboardResumen,
   FilterOption
 } from '../types/dashboard.types';
 import { formatNumber } from '../utils/formatters';
@@ -22,9 +30,9 @@ const ESTADO_OPTIONS: FilterOption[] = [
   { label: 'PROCESANDO', value: 'PROCESANDO' },
   { label: 'VALIDADA', value: 'VALIDADA' },
   { label: 'SOSPECHOSA', value: 'SOSPECHOSA' },
+  { label: 'PENDIENTE_REVISION', value: 'PENDIENTE_REVISION' },
   { label: 'RECHAZADA', value: 'RECHAZADA' },
   { label: 'PUBLICADA', value: 'PUBLICADA' },
-  { label: 'PENDIENTE_REVISION', value: 'PENDIENTE_REVISION' },
   { label: 'IMPORTADA', value: 'IMPORTADA' },
   { label: 'VALIDANDO', value: 'VALIDANDO' },
   { label: 'OBSERVADA', value: 'OBSERVADA' },
@@ -59,21 +67,10 @@ function buildFilterOptions(values: Array<string | null | undefined>): FilterOpt
   ];
 }
 
-function getHourLabel(value: string): string {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return 'Sin fecha';
-  }
-
-  const hour = date.getHours().toString().padStart(2, '0');
-
-  return `${hour}:00`;
-}
-
 export default function ActasPage() {
   const [actas, setActas] = useState<ActaDigitalizada[]>([]);
   const [estadoActas, setEstadoActas] = useState<ActStatusCount[]>([]);
+  const [resumen, setResumen] = useState<DashboardResumen | null>(null);
 
   const [estado, setEstado] = useState('TODOS');
   const [fuente, setFuente] = useState('TODOS');
@@ -81,15 +78,51 @@ export default function ActasPage() {
   const [municipio, setMunicipio] = useState('TODOS');
   const [mesa, setMesa] = useState('');
 
-  useEffect(() => {
-    Promise.all([
+  const [loading, setLoading] = useState(true);
+  const [erroresCarga, setErroresCarga] = useState<string[]>([]);
+
+  const cargarDatos = useCallback(async () => {
+    setLoading(true);
+
+    const [actasResult, estadoResult, resumenResult] = await Promise.allSettled([
       dashboardApi.getActasDigitalizadas(),
-      dashboardApi.getEstadoActas()
-    ]).then(([actasData, estadoData]) => {
-      setActas(actasData);
-      setEstadoActas(estadoData);
-    });
+      dashboardApi.getEstadoActas(),
+      dashboardApi.getResumen()
+    ]);
+
+    const errores: string[] = [];
+
+    if (actasResult.status === 'fulfilled') {
+      setActas(actasResult.value);
+    } else {
+      console.error('Error cargando actas digitalizadas:', actasResult.reason);
+      setActas([]);
+      errores.push('No se pudo cargar el listado de actas digitalizadas.');
+    }
+
+    if (estadoResult.status === 'fulfilled') {
+      setEstadoActas(estadoResult.value);
+    } else {
+      console.error('Error cargando estado de actas:', estadoResult.reason);
+      setEstadoActas([]);
+      errores.push('No se pudo cargar el estado de actas.');
+    }
+
+    if (resumenResult.status === 'fulfilled') {
+      setResumen(resumenResult.value);
+    } else {
+      console.error('Error cargando resumen de actas:', resumenResult.reason);
+      setResumen(null);
+      errores.push('No se pudo cargar el resumen RRV/Oficial.');
+    }
+
+    setErroresCarga(errores);
+    setLoading(false);
   }, []);
+
+  useEffect(() => {
+    cargarDatos();
+  }, [cargarDatos]);
 
   const departamentoOptions = useMemo<FilterOption[]>(() => {
     return buildFilterOptions(actas.map((acta) => acta.departamento));
@@ -107,7 +140,9 @@ export default function ActasPage() {
   useEffect(() => {
     if (municipio === 'TODOS') return;
 
-    const municipioExiste = municipioOptions.some((option) => option.value === municipio);
+    const municipioExiste = municipioOptions.some(
+      (option) => option.value === municipio
+    );
 
     if (!municipioExiste) {
       setMunicipio('TODOS');
@@ -139,119 +174,90 @@ export default function ActasPage() {
     });
   }, [actas, estado, fuente, departamento, municipio, mesa]);
 
-  const actasPorHora = useMemo(() => {
-    const buckets = new Map<
-      string,
-      {
-        hora: string;
-        recibidas: number;
-        procesadas: number;
-        validadas: number;
-      }
-    >();
-
-    for (const acta of filteredActas) {
-      const hora = getHourLabel(acta.fecha);
-
-      if (!buckets.has(hora)) {
-        buckets.set(hora, {
-          hora,
-          recibidas: 0,
-          procesadas: 0,
-          validadas: 0
-        });
-      }
-
-      const bucket = buckets.get(hora)!;
-
-      bucket.recibidas += 1;
-
-      if (
-        [
-          'PROCESANDO',
-          'VALIDADA',
-          'SOSPECHOSA',
-          'RECHAZADA',
-          'OBSERVADA',
-          'OFICIALIZADA',
-          'IMPORTADA',
-          'VALIDANDO',
-          'PUBLICADA'
-        ].includes(acta.estado)
-      ) {
-        bucket.procesadas += 1;
-      }
-
-      if (['VALIDADA', 'OFICIALIZADA'].includes(acta.estado)) {
-        bucket.validadas += 1;
-      }
-    }
-
-    const ordenadas = Array.from(buckets.values()).sort((a, b) =>
-      a.hora.localeCompare(b.hora)
-    );
-
-    let acumuladoRecibidas = 0;
-    let acumuladoProcesadas = 0;
-    let acumuladoValidadas = 0;
-
-    return ordenadas.map((item) => {
-      acumuladoRecibidas += item.recibidas;
-      acumuladoProcesadas += item.procesadas;
-      acumuladoValidadas += item.validadas;
-
-      return {
-        hora: item.hora,
-        recibidas: acumuladoRecibidas,
-        procesadas: acumuladoProcesadas,
-        validadas: acumuladoValidadas
-      };
-    });
-  }, [filteredActas]);
-
-  const totalRRV = actas.filter((acta) => acta.fuente === 'RRV').length;
-  const totalOficial = actas.filter((acta) => acta.fuente === 'OFICIAL').length;
-
-  const totalValidadas = actas.filter((acta) =>
-    ['VALIDADA', 'OFICIALIZADA'].includes(acta.estado)
-  ).length;
-
-  const totalAlertas = actas.filter((acta) =>
-    ['SOSPECHOSA', 'OBSERVADA', 'PENDIENTE_REVISION', 'RECHAZADA'].includes(
-      acta.estado
-    )
-  ).length;
+  if (loading) {
+    return <div className="loading-card">Cargando seguimiento de actas...</div>;
+  }
 
   return (
     <section className="page page-enter actas-page">
-      <div className="kpi-grid actas-kpi-grid">        <KpiCard
-          title="Actas RRV"
-          value={formatNumber(totalRRV)}
-          description="Actas digitalizadas provenientes de RRV"
-          status="POSITIVO"
+      {erroresCarga.length > 0 && (
+        <div className="loading-card">
+          {erroresCarga.map((error) => (
+            <p key={error}>{error}</p>
+          ))}
+
+          <button
+            type="button"
+            className="button primary"
+            onClick={cargarDatos}
+          >
+            <RefreshCw size={16} />
+            Reintentar
+          </button>
+        </div>
+      )}
+
+      <div className="kpi-grid actas-kpi-grid">
+        <KpiCard
+          title="Actas RRV recibidas"
+          value={formatNumber(resumen?.rrv.actasRecibidas ?? 0)}
+          description="Total reportado por backend RRV"
+          status="NEUTRO"
           icon={<Layers3 />}
         />
 
         <KpiCard
-          title="Actas oficiales"
-          value={formatNumber(totalOficial)}
-          description="Actas importadas desde fuente oficial"
-          status="NEUTRO"
-          icon={<FileCheck2 />}
+          title="Actas RRV validadas"
+          value={formatNumber(resumen?.rrv.actasValidadas ?? 0)}
+          description="Actas habilitadas por validación RRV"
+          status="POSITIVO"
+          icon={<CheckCircle2 />}
         />
 
         <KpiCard
-          title="Validadas"
-          value={formatNumber(totalValidadas)}
-          description="Actas verificadas por el backend"
+          title="Actas RRV con alerta"
+          value={formatNumber(resumen?.rrv.actasSospechosas ?? 0)}
+          description="Sospechosas, duplicadas o en revisión según backend"
+          status="ALERTA"
+          icon={<AlertTriangle />}
+        />
+
+        <KpiCard
+          title="Actas RRV rechazadas"
+          value={formatNumber(resumen?.rrv.actasRechazadas ?? 0)}
+          description="Rechazos determinados por backend RRV"
+          status="ALERTA"
+          icon={<FileX2 />}
+        />
+
+        <KpiCard
+          title="Actas oficiales importadas"
+          value={formatNumber(resumen?.oficial.actasImportadas ?? 0)}
+          description="Total reportado por API oficial"
+          status="NEUTRO"
+          icon={<Database />}
+        />
+
+        <KpiCard
+          title="Actas oficiales validadas"
+          value={formatNumber(resumen?.oficial.actasValidadas ?? 0)}
+          description="Actas computables según backend oficial"
           status="POSITIVO"
           icon={<FileCheck2 />}
         />
 
         <KpiCard
-          title="Alertas"
-          value={formatNumber(totalAlertas)}
-          description="Sospechosas, observadas, rechazadas o pendientes"
+          title="Actas oficiales observadas"
+          value={formatNumber(resumen?.oficial.actasObservadas ?? 0)}
+          description="Observaciones determinadas por backend oficial"
+          status="ALERTA"
+          icon={<AlertTriangle />}
+        />
+
+        <KpiCard
+          title="Actas oficiales rechazadas"
+          value={formatNumber(resumen?.oficial.actasRechazadas ?? 0)}
+          description="Rechazos determinados por backend oficial"
           status="ALERTA"
           icon={<FileX2 />}
         />
@@ -261,7 +267,10 @@ export default function ActasPage() {
         <div className="section-header">
           <div>
             <h3>Filtros de actas</h3>
-            <p>Filtra por estado, fuente, departamento, municipio y mesa.</p>
+            <p>
+              Filtra la información recibida desde los backends por estado,
+              fuente, departamento, municipio y mesa.
+            </p>
           </div>
         </div>
 
@@ -303,43 +312,34 @@ export default function ActasPage() {
           <input
             type="search"
             value={mesa}
-            placeholder="Ej. LP-001245"
+            placeholder="Ej. 1010200001003"
             onChange={(event) => setMesa(event.target.value)}
           />
         </label>
       </article>
 
-      <div className="dashboard-grid">
-        <article className="panel-card">
-          <div className="section-header">
-            <div>
-              <h3>Estados de actas</h3>
-              <p>RRV y Oficial por estado operativo.</p>
-            </div>
+      <article className="panel-card">
+        <div className="section-header">
+          <div>
+            <h3>Estados de actas</h3>
+            <p>
+              Distribución por fuente y estado. Los conteos provienen de los
+              endpoints RRV y Oficial.
+            </p>
           </div>
+        </div>
 
-          <ActStatusDonutChart data={estadoActas} />
-        </article>
-
-        <article className="panel-card">
-          <div className="section-header">
-            <div>
-              <h3>Flujo de actas por hora</h3>
-              <p>Recepción, procesamiento y validación acumulada.</p>
-            </div>
-
-            <FileClock size={22} />
-          </div>
-
-          <ActasPorHoraChart data={actasPorHora} />
-        </article>
-      </div>
+        <ActStatusDonutChart data={estadoActas} />
+      </article>
 
       <article className="panel-card">
         <div className="section-header">
           <div>
             <h3>Tabla de actas</h3>
-            <p>{formatNumber(filteredActas.length)} actas coinciden con los filtros.</p>
+            <p>
+              {formatNumber(filteredActas.length)} actas coinciden con los filtros
+              aplicados. El filtrado es solo visual.
+            </p>
           </div>
         </div>
 

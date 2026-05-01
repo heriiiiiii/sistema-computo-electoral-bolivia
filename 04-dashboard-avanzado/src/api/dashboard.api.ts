@@ -1,27 +1,15 @@
 /**
- * Dashboard API — datos reales del sistema electoral
+ * Dashboard API — adaptador HTTP del dashboard electoral.
  *
- * Este archivo centraliza la comunicación HTTP del dashboard.
+ * Este archivo NO debe calcular resultados electorales.
+ * Este archivo NO debe inventar datos.
+ * Este archivo NO debe decidir ganadores, diferencias ni estados reales.
  *
- * Fuentes:
- *
- * 1) RRV / Conteo rápido
- *    Endpoints: /api/rrv/*
- *    Backend esperado: FastAPI RRV.
- *    Base de datos: MongoDB Replica Set del módulo 01.
- *
- * 2) Oficial / Cómputo oficial
- *    Endpoints: /api/oficial/*
- *    Backend esperado: API oficial conectada al PostgreSQL del módulo 01.
- *    Base de datos: PostgreSQL primary/replica mediante postgres-router / HAProxy.
- *
- * El dashboard no se conecta directamente a MongoDB ni PostgreSQL.
- * Tampoco depende de la carpeta donde viva la API oficial.
- *
- * Regla:
- * - No usar mocks para ocultar fallos.
- * - Si una fuente cae, mostrar el estado real.
- * - Si una fuente no tiene datos, mostrar ceros o vacío de forma explícita.
+ * Solo:
+ * - Consume endpoints HTTP.
+ * - Normaliza nombres mínimos de campos.
+ * - Devuelve datos al frontend.
+ * - Maneja errores de red.
  */
 
 import axios from 'axios';
@@ -32,12 +20,11 @@ import type {
   CandidateResult,
   ClusterStatus,
   ComparacionGeneral,
-  ComparacionResultado,
   DashboardKpi,
   DashboardResumen,
   GeograficoItem,
   Inconsistencia,
-  MetricasTecnicas,
+  MetricasTecnicas
 } from '../types/dashboard.types';
 
 // ─── HTTP client ──────────────────────────────────────────────────
@@ -45,7 +32,7 @@ import type {
 const client = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL ?? '',
   timeout: 5000,
-  headers: { Accept: 'application/json' },
+  headers: { Accept: 'application/json' }
 });
 
 async function get<T>(endpoint: string): Promise<T> {
@@ -76,8 +63,9 @@ interface RrvResumen {
   actasValidadas: number;
   actasSospechosas: number;
   actasRechazadas: number;
-  actasPendientes: number;
-  actasDuplicadas: number;
+  actasPendientes?: number;
+  actasDuplicadas?: number;
+  actasConErrorOCR?: number;
   totalVotos: number;
   votosValidos: number;
   votosBlancos: number;
@@ -96,15 +84,17 @@ interface OficialResumen {
   success: boolean;
   data: {
     actas: {
-      total: number;
-      porEstado: Record<string, number | string>;
+      total?: number | string;
+      porEstado?: Record<string, number | string>;
     };
     votos: {
-      validos: number | string;
-      blancos: number | string;
-      nulos: number | string;
+      validos?: number | string;
+      blancos?: number | string;
+      nulos?: number | string;
+      totalVotos?: number | string;
+      total?: number | string;
     };
-    porPartido: Array<{
+    porPartido?: Array<{
       codigo: string;
       nombre: string;
       total_votos: string | number;
@@ -113,32 +103,45 @@ interface OficialResumen {
       estado: string;
       total: string | number;
     }>;
-    inconsistencias: Array<{
+    inconsistencias?: Array<{
       severidad: string;
       estado: string;
       total: string | number;
     }>;
-    clusterStatus: Array<{
+    clusterStatus?: Array<{
       cluster_nombre: string;
       motor: string;
       nodo: string;
       rol: string;
       estado: string;
       ultima_verificacion: string;
+      latenciaMs?: number | string;
+      observacion?: string;
     }>;
   };
 }
 
 interface OficialActaItem {
   id: number;
-  codigo_acta: string;
-  codigo_mesa: string;
-  recinto_nombre: string;
+  codigo_acta?: string;
+  codigo_mesa?: string;
+  codigo_recinto?: string;
+  recinto_nombre?: string;
   estado: string;
-  fecha_importacion: string;
+  fecha_importacion?: string;
   departamento?: string;
   provincia?: string;
   municipio?: string;
+}
+
+interface ComparacionBackendResponse extends Partial<ComparacionGeneral> {
+  success: boolean;
+  totalVotosRRV?: number;
+  totalVotosOficial?: number;
+  diferenciaTotal?: number;
+  diferenciaPorcentualTotal?: number;
+  estado?: ComparacionGeneral['estado'];
+  candidatos?: ComparacionGeneral['candidatos'];
 }
 
 // ─── Constants ────────────────────────────────────────────────────
@@ -147,53 +150,16 @@ const PARTY_COLORS: Record<string, string> = {
   P1: '#22c55e',
   P2: '#3b82f6',
   P3: '#f59e0b',
-  P4: '#a855f7',
+  P4: '#14b8a6'
 };
 
 const DEFAULT_COLOR = '#64748b';
 
-// ─── Helpers ──────────────────────────────────────────────────────
+// ─── Helpers mínimos de normalización ─────────────────────────────
 
 function safeInt(value: unknown): number {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? Math.round(parsed) : 0;
-}
-
-function getOficialTotalVotos(ofi?: OficialResumen): number {
-  if (!ofi?.data?.votos) return 0;
-
-  return (
-    safeInt(ofi.data.votos.validos) +
-    safeInt(ofi.data.votos.blancos) +
-    safeInt(ofi.data.votos.nulos)
-  );
-}
-
-function getOficialVotos(ofi?: OficialResumen) {
-  return {
-    votosValidos: safeInt(ofi?.data?.votos?.validos),
-    votosBlancos: safeInt(ofi?.data?.votos?.blancos),
-    votosNulos: safeInt(ofi?.data?.votos?.nulos),
-    totalVotos: getOficialTotalVotos(ofi),
-  };
-}
-
-function getOficialActas(ofi?: OficialResumen) {
-  const porEstado = ofi?.data?.actas?.porEstado || {};
-
-  return {
-    actasImportadas:
-      safeInt(ofi?.data?.actas?.total) ||
-      safeInt(porEstado['VALIDADA']) +
-        safeInt(porEstado['OBSERVADA']) +
-        safeInt(porEstado['OFICIALIZADA']) +
-        safeInt(porEstado['RECHAZADA']),
-    actasValidadas:
-      safeInt(porEstado['VALIDADA']) +
-      safeInt(porEstado['OFICIALIZADA']),
-    actasObservadas: safeInt(porEstado['OBSERVADA']),
-    actasRechazadas: safeInt(porEstado['RECHAZADA']),
-  };
 }
 
 function getEmptyRrvResumen(): RrvResumen {
@@ -206,80 +172,76 @@ function getEmptyRrvResumen(): RrvResumen {
     actasRechazadas: 0,
     actasPendientes: 0,
     actasDuplicadas: 0,
+    actasConErrorOCR: 0,
     totalVotos: 0,
     votosValidos: 0,
     votosBlancos: 0,
     votosNulos: 0,
-    ultimaActualizacion: new Date().toISOString(),
+    ultimaActualizacion: new Date().toISOString()
   };
 }
 
-function mapEstadoCluster(
-  estado: string,
-  source: 'RRV' | 'OFICIAL' = 'RRV'
-): ClusterStatus['estado'] {
-  const normalized = String(estado || '').toUpperCase();
+function normalizeClusterEstado(value: string | null | undefined): ClusterStatus['estado'] {
+  const estado = String(value || 'DESCONOCIDO').toUpperCase();
 
   if (
-    normalized === 'ACTIVO' ||
-    normalized === 'OK' ||
-    normalized === 'HEALTHY' ||
-    normalized === 'ONLINE'
+    estado === 'ACTIVO' ||
+    estado === 'DEGRADADO' ||
+    estado === 'CAIDO' ||
+    estado === 'PROCESANDO' ||
+    estado === 'DESCONOCIDO'
   ) {
-    return 'ACTIVO';
+    return estado as ClusterStatus['estado'];
   }
 
-  if (
-    normalized === 'DEGRADADO' ||
-    normalized === 'DESCONOCIDO' ||
-    normalized === 'UNKNOWN' ||
-    normalized === 'WARNING'
-  ) {
-    return 'DEGRADADO';
-  }
-
-  if (
-    normalized === 'CAIDO' ||
-    normalized === 'DOWN' ||
-    normalized === 'ERROR' ||
-    normalized === 'UNHEALTHY'
-  ) {
-    return 'CAIDO';
-  }
-
-  return source === 'OFICIAL' ? 'DEGRADADO' : 'CAIDO';
+  return 'DESCONOCIDO' as ClusterStatus['estado'];
 }
 
-function normalizeEstadoInconsistencia(
-  value: string | null | undefined
-): Inconsistencia['estado'] {
-  const raw = String(value || '').toUpperCase();
+function normalizeClusterRol(value: string | null | undefined): ClusterStatus['rol'] {
+  const rol = String(value || 'UNKNOWN').toUpperCase();
 
-  if (raw === 'RESUELTO') return 'RESUELTA';
-  if (raw === 'CERRADA') return 'RESUELTA';
-  if (raw === 'RESUELTA') return 'RESUELTA';
-  if (raw === 'EN_REVISION') return 'EN_REVISION';
-  if (raw === 'DESCARTADA') return 'DESCARTADA';
-  if (raw === 'ABIERTA') return 'ABIERTA';
+  if (
+    rol === 'PRIMARY' ||
+    rol === 'SECONDARY' ||
+    rol === 'REPLICA' ||
+    rol === 'READ_ONLY' ||
+    rol === 'LEADER' ||
+    rol === 'UNKNOWN'
+  ) {
+    return rol as ClusterStatus['rol'];
+  }
 
-  return 'ABIERTA';
+  return 'UNKNOWN' as ClusterStatus['rol'];
 }
 
-function normalizeSeveridad(
-  value: string | null | undefined
-): Inconsistencia['severidad'] {
-  const raw = String(value || '').toUpperCase();
+function getOficialActas(ofi?: OficialResumen) {
+  const porEstado = ofi?.data?.actas?.porEstado || {};
 
-  if (raw === 'CRITICAL') return 'CRITICA';
-  if (raw === 'CRITICA') return 'CRITICA';
-  if (raw === 'ERROR') return 'ALTA';
-  if (raw === 'ALTA') return 'ALTA';
-  if (raw === 'WARNING') return 'MEDIA';
-  if (raw === 'MEDIA') return 'MEDIA';
-  if (raw === 'INFO') return 'BAJA';
-  if (raw === 'BAJA') return 'BAJA';
+  return {
+    actasImportadas: safeInt(ofi?.data?.actas?.total),
+    actasValidadas: safeInt(porEstado['VALIDADA']),
+    actasObservadas: safeInt(porEstado['OBSERVADA']),
+    actasRechazadas: safeInt(porEstado['RECHAZADA'])
+  };
+}
 
-  return 'MEDIA';
+function getOficialVotos(ofi?: OficialResumen) {
+  return {
+    votosValidos: safeInt(ofi?.data?.votos?.validos),
+    votosBlancos: safeInt(ofi?.data?.votos?.blancos),
+    votosNulos: safeInt(ofi?.data?.votos?.nulos),
+
+    /*
+      Regla estricta:
+      El frontend NO suma válidos + blancos + nulos.
+      totalVotos debe venir del backend oficial.
+      Si no viene, se muestra 0.
+    */
+    totalVotos: safeInt(
+      ofi?.data?.votos?.totalVotos ??
+        ofi?.data?.votos?.total
+    )
+  };
 }
 
 // ─── Public API ───────────────────────────────────────────────────
@@ -290,7 +252,7 @@ export const dashboardApi = {
   async getResumen(): Promise<DashboardResumen> {
     const [rrvResult, ofiResult] = await Promise.all([
       safeGet<RrvResumen>(DASHBOARD_ENDPOINTS.resumenRrv),
-      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial),
+      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial)
     ]);
 
     if (!rrvResult.ok && !ofiResult.ok) {
@@ -302,122 +264,57 @@ export const dashboardApi = {
 
     return {
       rrv: {
-        actasRecibidas: rrv.actasRecibidas,
-        actasProcesadas: rrv.actasProcesadas,
-        actasValidadas: rrv.actasValidadas,
-        actasSospechosas: rrv.actasSospechosas,
-        actasRechazadas: rrv.actasRechazadas,
+        actasRecibidas: safeInt(rrv.actasRecibidas),
+        actasProcesadas: safeInt(rrv.actasProcesadas),
+        actasValidadas: safeInt(rrv.actasValidadas),
+        actasSospechosas: safeInt(rrv.actasSospechosas),
+        actasRechazadas: safeInt(rrv.actasRechazadas),
+        actasPendientes: safeInt(rrv.actasPendientes),
+        actasDuplicadas: safeInt(rrv.actasDuplicadas),
+        actasConErrorOCR: safeInt(rrv.actasConErrorOCR)
       },
       oficial: getOficialActas(ofi),
       votos: {
         rrv: {
-          votosValidos: rrv.votosValidos,
-          votosBlancos: rrv.votosBlancos,
-          votosNulos: rrv.votosNulos,
-          totalVotos: rrv.totalVotos,
+          votosValidos: safeInt(rrv.votosValidos),
+          votosBlancos: safeInt(rrv.votosBlancos),
+          votosNulos: safeInt(rrv.votosNulos),
+          totalVotos: safeInt(rrv.totalVotos)
         },
-        oficial: getOficialVotos(ofi),
+        oficial: getOficialVotos(ofi)
       },
-      ultimaActualizacion: rrv.ultimaActualizacion || new Date().toISOString(),
+      ultimaActualizacion: rrv.ultimaActualizacion || new Date().toISOString()
     };
   },
 
   // ── Comparación RRV vs Oficial ────────────────────────────────
 
   async getComparacion(): Promise<ComparacionGeneral> {
-    const [rrvResult, ofiResult] = await Promise.all([
-      safeGet<{ success: boolean; candidatos: RrvCandidato[] }>(
-        DASHBOARD_ENDPOINTS.resultadosCandidatosRrv
-      ),
-      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial),
-    ]);
-
-    if (!rrvResult.ok && !ofiResult.ok) {
-      throw new Error('No se pudo cargar comparación: RRV y Oficial no responden.');
-    }
-
-    const rrvCandidatos = rrvResult.ok ? rrvResult.data.candidatos || [] : [];
-    const ofiPartidos = ofiResult.ok ? ofiResult.data.data.porPartido || [] : [];
-
-    const rrvMap = new Map<string, RrvCandidato>();
-    const ofiMap = new Map<string, { codigo: string; nombre: string; votos: number }>();
-
-    for (const c of rrvCandidatos) {
-      rrvMap.set(c.partidoCodigo, c);
-    }
-
-    for (const p of ofiPartidos) {
-      ofiMap.set(p.codigo, {
-        codigo: p.codigo,
-        nombre: p.nombre,
-        votos: safeInt(p.total_votos),
-      });
-    }
-
     /*
-      Regla:
-      - Si RRV tiene partidos, la comparación se construye desde RRV.
-      - Si RRV todavía está vacío, se muestran partidos oficiales para no dejar la página muerta.
-      - No se inventan datos: votos RRV quedan en 0 si no existen.
+      Regla estricta:
+      El frontend NO cruza RRV + Oficial.
+      El frontend NO calcula diferencia.
+      El frontend NO calcula porcentaje.
+      El frontend NO decide COINCIDE / INCONSISTENCIA.
+      Solo muestra lo que devuelva el backend.
     */
-    const codigos =
-      rrvMap.size > 0
-        ? Array.from(rrvMap.keys()).sort()
-        : Array.from(ofiMap.keys()).sort();
+    const result = await safeGet<ComparacionBackendResponse>(
+      DASHBOARD_ENDPOINTS.comparacionRrv
+    );
 
-    const candidatos: ComparacionResultado[] = codigos.map((codigo) => {
-      const rrv = rrvMap.get(codigo);
-      const ofi = ofiMap.get(codigo);
+    if (!result.ok) {
+      throw new Error('No se pudo cargar comparación desde backend.');
+    }
 
-      const votosRRV = rrv?.totalVotos ?? 0;
-      const votosOficial = ofi?.votos ?? 0;
-      const dif = votosRRV - votosOficial;
-      const totalRef = Math.max(votosRRV, votosOficial, 1);
-      const difPct = Math.round((Math.abs(dif) / totalRef) * 10000) / 100;
-
-      let estado: ComparacionResultado['estado'] = 'COINCIDE';
-
-      if (difPct > 1) {
-        estado = 'INCONSISTENCIA';
-      } else if (difPct > 0.05) {
-        estado = 'DIFERENCIA_LEVE';
-      }
-
-      return {
-        partido: codigo,
-        candidato: rrv?.partidoNombre || ofi?.nombre || `Partido ${codigo}`,
-        color: rrv?.color || PARTY_COLORS[codigo] || DEFAULT_COLOR,
-        votosRRV,
-        votosOficial,
-        diferencia: dif,
-        diferenciaPorcentual: difPct,
-        estado,
-      };
-    });
-
-    const totalRRV = candidatos.reduce((s, c) => s + c.votosRRV, 0);
-
-    const totalOficial =
-      ofiResult.ok
-        ? getOficialTotalVotos(ofiResult.data)
-        : candidatos.reduce((s, c) => s + c.votosOficial, 0);
-
-    const difTotal = totalRRV - totalOficial;
-    const totalRef = Math.max(totalRRV, totalOficial, 1);
-    const difTotalPct = Math.round((Math.abs(difTotal) / totalRef) * 10000) / 100;
+    const data = result.data;
 
     return {
-      totalVotosRRV: totalRRV,
-      totalVotosOficial: totalOficial,
-      diferenciaTotal: difTotal,
-      diferenciaPorcentualTotal: difTotalPct,
-      estado:
-        difTotalPct > 1
-          ? 'INCONSISTENCIA'
-          : difTotalPct > 0.05
-            ? 'DIFERENCIA_LEVE'
-            : 'COINCIDE',
-      candidatos,
+      totalVotosRRV: safeInt(data.totalVotosRRV),
+      totalVotosOficial: safeInt(data.totalVotosOficial),
+      diferenciaTotal: safeInt(data.diferenciaTotal),
+      diferenciaPorcentualTotal: Number(data.diferenciaPorcentualTotal) || 0,
+      estado: (data.estado || 'SIN_DATO') as ComparacionGeneral['estado'],
+      candidatos: data.candidatos || []
     };
   },
 
@@ -438,11 +335,16 @@ export const dashboardApi = {
   // ── Resultados candidatos ─────────────────────────────────────
 
   async getResultadosCandidatos(): Promise<CandidateResult[]> {
+    /*
+      Esta función solo arma una tabla de lectura:
+      votos RRV desde RRV y votos oficiales desde Oficial.
+      No calcula diferencia ni estado.
+    */
     const [rrvResult, ofiResult] = await Promise.all([
       safeGet<{ success: boolean; candidatos: RrvCandidato[] }>(
         DASHBOARD_ENDPOINTS.resultadosCandidatosRrv
       ),
-      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial),
+      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial)
     ]);
 
     if (!rrvResult.ok && !ofiResult.ok) {
@@ -463,7 +365,7 @@ export const dashboardApi = {
       ofiMap.set(p.codigo, {
         codigo: p.codigo,
         nombre: p.nombre,
-        votos: safeInt(p.total_votos),
+        votos: safeInt(p.total_votos)
       });
     }
 
@@ -477,8 +379,8 @@ export const dashboardApi = {
         partido: codigo,
         candidato: rrv?.partidoNombre || ofi?.nombre || `Partido ${codigo}`,
         color: rrv?.color || PARTY_COLORS[codigo] || DEFAULT_COLOR,
-        votosRRV: rrv?.totalVotos ?? 0,
-        votosOficial: ofi?.votos ?? 0,
+        votosRRV: safeInt(rrv?.totalVotos),
+        votosOficial: safeInt(ofi?.votos)
       };
     });
   },
@@ -491,7 +393,7 @@ export const dashboardApi = {
         success: boolean;
         estados: Array<{ fuente: string; estado: string; cantidad: number }>;
       }>(DASHBOARD_ENDPOINTS.estadoActasRrv),
-      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial),
+      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial)
     ]);
 
     if (!rrvResult.ok && !ofiResult.ok) {
@@ -502,7 +404,7 @@ export const dashboardApi = {
       ? (rrvResult.data.estados || []).map((e) => ({
           fuente: 'RRV' as const,
           estado: e.estado as ActStatusCount['estado'],
-          cantidad: safeInt(e.cantidad),
+          cantidad: safeInt(e.cantidad)
         }))
       : [];
 
@@ -512,7 +414,7 @@ export const dashboardApi = {
       ([estado, total]) => ({
         fuente: 'OFICIAL' as const,
         estado: estado as ActStatusCount['estado'],
-        cantidad: safeInt(total),
+        cantidad: safeInt(total)
       })
     );
 
@@ -522,43 +424,22 @@ export const dashboardApi = {
   // ── Inconsistencias ───────────────────────────────────────────
 
   async getInconsistencias(): Promise<Inconsistencia[]> {
-    const [rrvResult, ofiResult] = await Promise.all([
-      safeGet<{ success: boolean; inconsistencias: Inconsistencia[] }>(
-        DASHBOARD_ENDPOINTS.inconsistenciasRrv
-      ),
-      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial),
-    ]);
+    /*
+      Regla estricta:
+      No fabricamos inconsistencias oficiales a partir del resumen.
+      Mientras no exista /api/oficial/inconsistencias, se muestran las RRV.
+    */
+    const result = await safeGet<{
+      success: boolean;
+      total: number;
+      inconsistencias: Inconsistencia[];
+    }>(DASHBOARD_ENDPOINTS.inconsistenciasRrv);
 
-    if (!rrvResult.ok && !ofiResult.ok) {
-      throw new Error('No se pudo cargar inconsistencias: RRV y Oficial no responden.');
+    if (!result.ok) {
+      throw new Error('No se pudo cargar inconsistencias RRV.');
     }
 
-    const rrvItems: Inconsistencia[] = rrvResult.ok
-      ? rrvResult.data.inconsistencias || []
-      : [];
-
-    const ofiItems: Inconsistencia[] = ofiResult.ok
-      ? (ofiResult.data.data.inconsistencias || []).map((inc, index) => {
-          const total = safeInt(inc.total);
-          const severidad = normalizeSeveridad(inc.severidad);
-          const estado = normalizeEstadoInconsistencia(inc.estado);
-
-          return {
-            id: `INC-OF-${index + 1}`,
-            origen: 'OFICIAL' as const,
-            tipo: 'DIFERENCIA_RESULTADOS' as const,
-            severidad,
-            estado,
-            codigoMesa: '-',
-            departamento: '-',
-            municipio: '-',
-            descripcion: `${total} inconsistencia(s) ${severidad} en cómputo oficial`,
-            fecha: new Date().toISOString(),
-          };
-        })
-      : [];
-
-    return [...rrvItems, ...ofiItems];
+    return result.data.inconsistencias || [];
   },
 
   // ── Geográfico ────────────────────────────────────────────────
@@ -571,9 +452,29 @@ export const dashboardApi = {
         nivel: string;
         nombre: string;
         departamento: string;
+        provincia?: string;
+        municipio?: string;
+        recinto?: string;
+        codigoMesa?: string;
+        codigo_mesa?: string;
+
         votosRRV: number;
+        votosOficial?: number;
         actasProcesadas: number;
         participacion: number;
+        estadoComparacion?: string;
+
+        ganadorRRV?: string;
+        ganador_rrv?: string;
+        ganadorOficial?: string;
+        ganador_oficial?: string;
+
+        votosGanadorRRV?: number;
+        votos_ganador_rrv?: number;
+        votosGanadorOficial?: number;
+        votos_ganador_oficial?: number;
+
+        clasificacionTerritorial?: GeograficoItem['clasificacionTerritorial'];
       }>;
     }>(DASHBOARD_ENDPOINTS.geograficoRrv);
 
@@ -586,20 +487,41 @@ export const dashboardApi = {
       nivel: item.nivel as GeograficoItem['nivel'],
       nombre: item.nombre,
       departamento: item.departamento,
+      provincia: item.provincia,
+      municipio: item.municipio,
+      recinto: item.recinto,
+      codigoMesa: item.codigoMesa || item.codigo_mesa,
+
       votosRRV: safeInt(item.votosRRV),
-      votosOficial: 0,
+      votosOficial: safeInt(item.votosOficial),
       actasProcesadas: safeInt(item.actasProcesadas),
       participacion: Number(item.participacion) || 0,
-      estadoComparacion: 'COINCIDE' as const,
+      estadoComparacion:
+        (item.estadoComparacion as GeograficoItem['estadoComparacion']) ||
+        'SIN_DATO',
+
+      ganadorRRV: item.ganadorRRV || item.ganador_rrv,
+      ganadorOficial: item.ganadorOficial || item.ganador_oficial,
+      votosGanadorRRV: safeInt(item.votosGanadorRRV || item.votos_ganador_rrv),
+      votosGanadorOficial: safeInt(
+        item.votosGanadorOficial || item.votos_ganador_oficial
+      ),
+      clasificacionTerritorial: item.clasificacionTerritorial
     }));
   },
 
   // ── Métricas técnicas ─────────────────────────────────────────
 
   async getMetricasTecnicas(): Promise<MetricasTecnicas> {
-    const resp = await get<{ success: boolean } & MetricasTecnicas>(
+    const result = await safeGet<{ success: boolean } & MetricasTecnicas>(
       DASHBOARD_ENDPOINTS.metricasTecnicasRrv
     );
+
+    if (!result.ok) {
+      throw new Error('No se pudieron cargar métricas técnicas RRV.');
+    }
+
+    const resp = result.data;
 
     return {
       latenciaPromedioMs: safeInt(resp.latenciaPromedioMs),
@@ -611,6 +533,16 @@ export const dashboardApi = {
       numerosNoAutorizados: safeInt(resp.numerosNoAutorizados),
       actasSospechosas: safeInt(resp.actasSospechosas),
       intentosDuplicados: safeInt(resp.intentosDuplicados),
+
+      latenciaEstado: resp.latenciaEstado,
+      throughputEstado: resp.throughputEstado,
+      disponibilidadEstado: resp.disponibilidadEstado,
+      erroresEstado: resp.erroresEstado,
+      reintentosEstado: resp.reintentosEstado,
+      smsInvalidosEstado: resp.smsInvalidosEstado,
+      numerosNoAutorizadosEstado: resp.numerosNoAutorizadosEstado,
+      actasSospechosasEstado: resp.actasSospechosasEstado,
+      intentosDuplicadosEstado: resp.intentosDuplicadosEstado
     };
   },
 
@@ -621,7 +553,7 @@ export const dashboardApi = {
       safeGet<{ success: boolean; clusters: ClusterStatus[] }>(
         DASHBOARD_ENDPOINTS.estadoClustersRrv
       ),
-      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial),
+      safeGet<OficialResumen>(DASHBOARD_ENDPOINTS.resumenOficial)
     ]);
 
     const clusters: ClusterStatus[] = [];
@@ -634,35 +566,30 @@ export const dashboardApi = {
         cluster: 'RRV-NoSQL / MongoDB',
         motor: 'MongoDB',
         nodo: 'api-rrv:4001',
-        rol: 'PRIMARY',
+        rol: 'UNKNOWN',
         estado: 'CAIDO',
         latenciaMs: 0,
         ultimaVerificacion: new Date().toISOString(),
-        observacion: 'No se pudo consultar el backend RRV o el clúster MongoDB.',
+        observacion: 'No se pudo consultar el backend RRV.'
       });
     }
 
     if (ofiResult.ok) {
       const pgClusters: ClusterStatus[] = (ofiResult.data.data.clusterStatus || [])
         .filter((cs) => String(cs.motor).toUpperCase() === 'POSTGRESQL')
-        .map((cs, idx) => {
-          const estadoNormalizado = mapEstadoCluster(cs.estado, 'OFICIAL');
-
-          return {
-            id: `CL-PG-${idx + 1}`,
-            cluster: cs.cluster_nombre || 'Oficial-Relacional / PostgreSQL',
-            motor: 'PostgreSQL' as const,
-            nodo: cs.nodo || `pg-node-${idx + 1}`,
-            rol: (cs.rol as ClusterStatus['rol']) || 'PRIMARY',
-            estado: estadoNormalizado,
-            latenciaMs: 100 + idx * 20,
-            ultimaVerificacion: cs.ultima_verificacion || new Date().toISOString(),
-            observacion:
-              String(cs.estado).toUpperCase() === 'DESCONOCIDO'
-                ? `Nodo ${String(cs.rol || '').toLowerCase()} — API oficial respondió correctamente; health interno no detallado`
-                : `Nodo ${String(cs.rol || '').toLowerCase()} — estado ${cs.estado}`,
-          };
-        });
+        .map((cs, idx) => ({
+          id: `CL-PG-${idx + 1}`,
+          cluster: cs.cluster_nombre || 'Oficial-Relacional / PostgreSQL',
+          motor: 'PostgreSQL' as const,
+          nodo: cs.nodo || `pg-node-${idx + 1}`,
+          rol: normalizeClusterRol(cs.rol),
+          estado: normalizeClusterEstado(cs.estado),
+          latenciaMs: safeInt(cs.latenciaMs),
+          ultimaVerificacion: cs.ultima_verificacion || new Date().toISOString(),
+          observacion:
+            cs.observacion ||
+            `Estado reportado por backend oficial: ${cs.estado || 'DESCONOCIDO'}`
+        }));
 
       clusters.push(...pgClusters);
     } else {
@@ -671,11 +598,11 @@ export const dashboardApi = {
         cluster: 'Oficial-Relacional / PostgreSQL',
         motor: 'PostgreSQL',
         nodo: 'api-oficial:4000',
-        rol: 'PRIMARY',
+        rol: 'UNKNOWN',
         estado: 'CAIDO',
         latenciaMs: 0,
         ultimaVerificacion: new Date().toISOString(),
-        observacion: 'No se pudo consultar el backend oficial.',
+        observacion: 'No se pudo consultar el backend oficial.'
       });
     }
 
@@ -695,13 +622,11 @@ export const dashboardApi = {
           actas: OficialActaItem[];
           total: number;
         };
-      }>(`${DASHBOARD_ENDPOINTS.actasOficial}?limit=50`),
+      }>(`${DASHBOARD_ENDPOINTS.actasOficial}?limit=50`)
     ]);
 
     if (!rrvResult.ok && !ofiResult.ok) {
-      throw new Error(
-        'No se pudo cargar actas digitalizadas: RRV y Oficial no responden.'
-      );
+      throw new Error('No se pudo cargar actas digitalizadas: RRV y Oficial no responden.');
     }
 
     const rrvActas: ActaDigitalizada[] = rrvResult.ok
@@ -711,16 +636,18 @@ export const dashboardApi = {
     const ofiActas: ActaDigitalizada[] = ofiResult.ok
       ? (ofiResult.data.data.actas || []).map((item) => ({
           id: String(item.id),
+          codigoActa: item.codigo_acta,
           codigoMesa: item.codigo_mesa || item.codigo_acta || 'SIN_MESA',
           recinto: item.recinto_nombre || 'Sin recinto',
           municipio: item.municipio || '-',
           departamento: item.departamento || '-',
+          provincia: item.provincia,
           fuente: 'OFICIAL' as const,
           estado: item.estado as ActaDigitalizada['estado'],
-          fecha: item.fecha_importacion || new Date().toISOString(),
+          fecha: item.fecha_importacion || new Date().toISOString()
         }))
       : [];
 
     return [...rrvActas, ...ofiActas];
-  },
+  }
 };

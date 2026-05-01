@@ -1,6 +1,8 @@
 export type FuenteDatos = 'RRV' | 'OFICIAL' | 'AMBOS';
 export type ActaFuente = 'RRV' | 'OFICIAL';
 
+export type EstadoVisual = 'POSITIVO' | 'NEUTRO' | 'ALERTA' | 'CRITICO';
+
 export type EstadoRRV =
   | 'RECIBIDA'
   | 'PROCESANDO'
@@ -8,7 +10,8 @@ export type EstadoRRV =
   | 'SOSPECHOSA'
   | 'RECHAZADA'
   | 'PUBLICADA'
-  | 'PENDIENTE_REVISION';
+  | 'PENDIENTE_REVISION'
+  | 'SIN_ESTADO';
 
 export type EstadoOficial =
   | 'IMPORTADA'
@@ -16,7 +19,9 @@ export type EstadoOficial =
   | 'VALIDADA'
   | 'OBSERVADA'
   | 'RECHAZADA'
-  | 'OFICIALIZADA';
+  | 'OFICIALIZADA'
+  | 'PENDIENTE_COMPARACION'
+  | 'CSV_DUPLICADO';
 
 export type EstadoActa = EstadoRRV | EstadoOficial;
 
@@ -24,8 +29,9 @@ export type EstadoComparacion =
   | 'COINCIDE'
   | 'DIFERENCIA_LEVE'
   | 'INCONSISTENCIA'
-  | 'CRITICA';
-
+  | 'CRITICA'
+  | 'PENDIENTE_COMPARACION'
+  | 'SIN_DATO';
 export type OrigenInconsistencia =
   | 'RRV'
   | 'OFICIAL'
@@ -43,7 +49,8 @@ export type TipoInconsistencia =
   | 'TOTAL_INCOHERENTE'
   | 'SMS_NO_AUTORIZADO'
   | 'OCR_INCONFIABLE'
-  | 'CSV_INVALIDO';
+  | 'CSV_INVALIDO'
+  | 'VALIDACION_OFICIAL';
 
 export type SeveridadInconsistencia = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA';
 
@@ -57,9 +64,15 @@ export type NivelGeografico =
   | 'DEPARTAMENTO'
   | 'PROVINCIA'
   | 'MUNICIPIO'
-  | 'RECINTO';
+  | 'RECINTO'
+  | 'MESA';
 
-export type ClusterEstado = 'ACTIVO' | 'DEGRADADO' | 'CAIDO' | 'PROCESANDO';
+export type ClusterEstado =
+  | 'ACTIVO'
+  | 'DEGRADADO'
+  | 'CAIDO'
+  | 'PROCESANDO'
+  | 'DESCONOCIDO';
 
 export interface VotosResumen {
   votosValidos: number;
@@ -75,12 +88,19 @@ export interface DashboardResumen {
     actasValidadas: number;
     actasSospechosas: number;
     actasRechazadas: number;
+
+    actasPendientes?: number;
+    actasDuplicadas?: number;
+    actasConErrorOCR?: number;
   };
   oficial: {
     actasImportadas: number;
     actasValidadas: number;
     actasObservadas: number;
     actasRechazadas: number;
+
+    actasTotal?: number;
+    actasOficializadas?: number;
   };
   votos: {
     rrv: VotosResumen;
@@ -95,7 +115,7 @@ export interface DashboardKpi {
   valor: string | number;
   descripcion: string;
   variacion?: number;
-  estado: 'POSITIVO' | 'NEUTRO' | 'ALERTA' | 'CRITICO';
+  estado: EstadoVisual;
 }
 
 export interface CandidateResult {
@@ -119,6 +139,11 @@ export interface ComparacionGeneral {
   diferenciaPorcentualTotal: number;
   estado: EstadoComparacion;
   candidatos: ComparacionResultado[];
+
+  margenVictoria?: number;
+  fuenteMargenVictoria?: FuenteDatos;
+  integracionOficial?: boolean;
+  mensaje?: string;
 }
 
 export interface ActStatusCount {
@@ -144,6 +169,12 @@ export interface Inconsistencia {
   municipio: string;
   descripcion: string;
   fecha: string;
+
+  codigoActa?: string;
+  provincia?: string;
+  recinto?: string;
+  regla?: string;
+  fuenteRegla?: string;
 }
 
 export interface GeograficoItem {
@@ -154,11 +185,20 @@ export interface GeograficoItem {
   provincia?: string;
   municipio?: string;
   recinto?: string;
+  codigoMesa?: string;
+
   votosRRV: number;
   votosOficial: number;
   actasProcesadas: number;
   participacion: number;
   estadoComparacion: EstadoComparacion;
+
+  ganadorRRV?: string;
+  ganadorOficial?: string;
+  votosGanadorRRV?: number;
+  votosGanadorOficial?: number;
+
+  clasificacionTerritorial?: 'VALIDADA' | 'SIN_DEPARTAMENTO' | 'PENDIENTE_REVISION';
 }
 
 export interface MetricasTecnicas {
@@ -171,6 +211,16 @@ export interface MetricasTecnicas {
   numerosNoAutorizados: number;
   actasSospechosas: number;
   intentosDuplicados: number;
+
+  latenciaEstado?: EstadoVisual;
+  throughputEstado?: EstadoVisual;
+  disponibilidadEstado?: EstadoVisual;
+  erroresEstado?: EstadoVisual;
+  reintentosEstado?: EstadoVisual;
+  smsInvalidosEstado?: EstadoVisual;
+  numerosNoAutorizadosEstado?: EstadoVisual;
+  actasSospechosasEstado?: EstadoVisual;
+  intentosDuplicadosEstado?: EstadoVisual;
 }
 
 export interface ClusterStatus {
@@ -178,11 +228,19 @@ export interface ClusterStatus {
   cluster: string;
   motor: 'MongoDB' | 'PostgreSQL';
   nodo: string;
-  rol: 'PRIMARY' | 'SECONDARY' | 'REPLICA' | 'READ_ONLY' | 'LEADER';
-  estado: ClusterEstado;
+rol: 'PRIMARY' | 'SECONDARY' | 'REPLICA' | 'READ_ONLY' | 'LEADER' | 'UNKNOWN';  estado: ClusterEstado;
   latenciaMs: number;
   ultimaVerificacion: string;
   observacion: string;
+}
+
+export interface EstadoInfraestructura {
+  clustersActivos: number;
+  clustersDegradados: number;
+  clustersCaidos: number;
+  clustersDesconocidos: number;
+  estadoGeneral: ClusterEstado;
+  disponibilidadInfraestructura?: number;
 }
 
 export interface ActaDigitalizada {
@@ -194,6 +252,9 @@ export interface ActaDigitalizada {
   fuente: ActaFuente;
   estado: EstadoActa;
   fecha: string;
+
+  codigoActa?: string;
+  provincia?: string;
 }
 
 export interface ActasPorHora {

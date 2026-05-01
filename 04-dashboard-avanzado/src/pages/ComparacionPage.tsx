@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BadgeCheck, GitCompare, Scale, Vote } from 'lucide-react';
 import { dashboardApi } from '../api/dashboard.api';
 import KpiCard from '../components/cards/KpiCard';
@@ -6,7 +6,6 @@ import CandidateComparisonChart from '../components/charts/CandidateComparisonCh
 import ComparacionTable from '../components/tables/ComparacionTable';
 import type { ComparacionGeneral } from '../types/dashboard.types';
 import { formatNumber, formatPercent, getStatusClass } from '../utils/formatters';
-import { calcularMargenVictoria } from '../utils/calculations';
 import '../styles/comparacion.css';
 
 export default function ComparacionPage() {
@@ -64,23 +63,6 @@ export default function ComparacionPage() {
     };
   }, []);
 
-  const fuenteMargen = useMemo(() => {
-    if (!comparacion) return 'RRV';
-
-    return comparacion.totalVotosRRV > 0 ? 'RRV' : 'Oficial';
-  }, [comparacion]);
-
-  const margenVictoria = useMemo(() => {
-    if (!comparacion) return 0;
-
-    return calcularMargenVictoria(
-      comparacion.candidatos.map((item) => ({
-        nombre: item.candidato,
-        votos: fuenteMargen === 'RRV' ? item.votosRRV : item.votosOficial,
-      }))
-    );
-  }, [comparacion, fuenteMargen]);
-
   if (loading) {
     return <div className="loading-card">Cargando comparación electoral...</div>;
   }
@@ -114,6 +96,7 @@ export default function ComparacionPage() {
           <p>
             Vista de lectura para identificar diferencias absolutas,
             porcentuales y estado de consistencia entre fuentes.
+            El dashboard solo presenta datos entregados por los endpoints.
           </p>
         </div>
 
@@ -126,7 +109,7 @@ export default function ComparacionPage() {
         <KpiCard
           title="Total votos RRV"
           value={formatNumber(comparacion.totalVotosRRV)}
-          description="Total computado desde la fuente RRV"
+          description="Total reportado por el backend RRV"
           status="POSITIVO"
           icon={<Vote />}
         />
@@ -134,7 +117,7 @@ export default function ComparacionPage() {
         <KpiCard
           title="Total votos Oficial"
           value={formatNumber(comparacion.totalVotosOficial)}
-          description="Total recibido desde fuente oficial"
+          description="Total reportado por la API oficial"
           status="POSITIVO"
           icon={<BadgeCheck />}
         />
@@ -142,24 +125,30 @@ export default function ComparacionPage() {
         <KpiCard
           title="Diferencia total"
           value={formatNumber(Math.abs(comparacion.diferenciaTotal))}
-          description="Diferencia absoluta entre ambas fuentes"
-          status={Math.abs(comparacion.diferenciaTotal) > 1000 ? 'ALERTA' : 'NEUTRO'}
+          description="Diferencia entregada por el flujo de comparación"
+          status="NEUTRO"
           icon={<Scale />}
         />
 
         <KpiCard
           title="Diferencia porcentual"
           value={formatPercent(comparacion.diferenciaPorcentualTotal, 4)}
-          description="Diferencia relativa sobre el total oficial"
+          description="Porcentaje entregado por el flujo de comparación"
           status="NEUTRO"
           icon={<GitCompare />}
         />
 
         <KpiCard
-          title={`Margen de victoria ${fuenteMargen}`}
-          value={formatPercent(margenVictoria)}
-          description="Distancia entre primer y segundo candidato"
-          status="POSITIVO"
+          title="Estado de comparación"
+          value={comparacion.estado.replace(/_/g, ' ')}
+          description="Estado recibido para la comparación RRV vs Oficial"
+          status={
+            comparacion.estado === 'INCONSISTENCIA'
+              ? 'ALERTA'
+              : comparacion.estado === 'DIFERENCIA_LEVE'
+                ? 'NEUTRO'
+                : 'POSITIVO'
+          }
           icon={<BadgeCheck />}
         />
       </div>
@@ -168,7 +157,10 @@ export default function ComparacionPage() {
         <div className="section-header">
           <div>
             <h3>Votos por candidato</h3>
-            <p>Comparación visual de resultados RRV y Oficial.</p>
+            <p>
+              Comparación visual de resultados RRV y Oficial recibidos desde
+              backend.
+            </p>
           </div>
         </div>
 
@@ -179,7 +171,9 @@ export default function ComparacionPage() {
         <div className="section-header">
           <div>
             <h3>Tabla comparativa</h3>
-            <p>Detalle por partido, candidato, diferencia y estado.</p>
+            <p>
+              Detalle por partido, candidato, diferencia y estado reportado.
+            </p>
           </div>
         </div>
 
