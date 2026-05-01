@@ -1,4 +1,23 @@
-version: "3.8"
+# =============================================================================
+#  Sistema Nacional de Cómputo Electoral Bolivia
+#  Module 01 — Clusters, Databases, Synchronization, and Fault Tolerance
+#
+#  MongoDB  : mongo1 (27017) | mongo2 (27018) | mongo3 (27019)  → rs0
+#  PostgreSQL: postgres-primary (5432) | postgres-replica (5433)
+#
+#  First-time startup:
+#    1. docker compose up -d mongo1 mongo2 mongo3 postgres-primary
+#    2. Wait ~30s for nodes to be healthy
+#    3. docker compose run --rm mongo-init
+#    4. docker compose up -d
+#
+#  Full reset:
+#    docker compose down -v
+#    docker compose up -d mongo1 mongo2 mongo3 postgres-primary
+#    (wait 30s)
+#    docker compose run --rm mongo-init
+#    docker compose up -d
+# =============================================================================
 
 networks:
   oep-network:

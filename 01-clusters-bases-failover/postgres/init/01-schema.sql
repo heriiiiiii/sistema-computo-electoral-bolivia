@@ -48,9 +48,7 @@ CREATE TABLE IF NOT EXISTS recintos (
   municipio_id        INTEGER      REFERENCES municipios(id),
   nombre              VARCHAR(200) NOT NULL,
   direccion           TEXT,
-  cantidad_mesas      INTEGER,
-  estado              VARCHAR(30)  DEFAULT 'ACTIVO',
-  CHECK (estado IN ('ACTIVO', 'INACTIVO', 'SUSPENDIDO'))
+  cantidad_mesas      INTEGER
 );
 
 -- ── 5. mesas ──────────────────────────────────────────────────────────────────
@@ -63,9 +61,7 @@ CREATE TABLE IF NOT EXISTS mesas (
   numero_mesa         INTEGER     NOT NULL,
   recinto_id          INTEGER     REFERENCES recintos(id),
   cantidad_habilitada INTEGER     NOT NULL,
-  estado              VARCHAR(30) DEFAULT 'ACTIVA',
-  CHECK (cantidad_habilitada >= 0),
-  CHECK (estado IN ('ACTIVA', 'INACTIVA', 'SUSPENDIDA'))
+  CHECK (cantidad_habilitada >= 0)
 );
 
 -- ── 6. partidos ───────────────────────────────────────────────────────────────
@@ -114,6 +110,7 @@ CREATE TABLE IF NOT EXISTS actas_oficiales (
   mesa_id              INTEGER      NOT NULL REFERENCES mesas(id),
   csv_importacion_id   INTEGER      REFERENCES csv_importaciones(id),
   codigo_acta          VARCHAR(100) UNIQUE NOT NULL,
+  codigo_acta_csv      VARCHAR(100),
   franja               VARCHAR(50)  NOT NULL,
   -- Vote totals (nullable until backend validation clears them)
   votos_validos        INTEGER,
@@ -122,9 +119,15 @@ CREATE TABLE IF NOT EXISTS actas_oficiales (
   total_votos          INTEGER,
   papeletas_en_anfora  INTEGER,
   papeletas_no_utilizadas INTEGER,
+  -- Horarios reales (vienen del CSV de transcripciones)
+  apertura_hora        SMALLINT,
+  apertura_minutos     SMALLINT,
+  cierre_hora          SMALLINT,
+  cierre_minutos       SMALLINT,
   estado               VARCHAR(50)  NOT NULL,
   fuente               VARCHAR(30)  DEFAULT 'CSV',
-  -- Traceability
+  recalculado          BOOLEAN      DEFAULT FALSE,
+  -- Trazabilidad de personas reales que tocan el acta
   usuario_importacion  VARCHAR(150),
   fecha_importacion    TIMESTAMP    DEFAULT now(),
   usuario_validacion   VARCHAR(150),
@@ -190,22 +193,9 @@ CREATE TABLE IF NOT EXISTS auditoria_oficial (
   fecha_hora     TIMESTAMP    DEFAULT now()
 );
 
--- ── 13. revisiones_oficiales ──────────────────────────────────────────────────
--- Who reviewed the acta, their decision, and whether correction was needed.
-CREATE TABLE IF NOT EXISTS revisiones_oficiales (
-  id              SERIAL       PRIMARY KEY,
-  acta_oficial_id INTEGER      NOT NULL REFERENCES actas_oficiales(id) ON DELETE CASCADE,
-  usuario_revisor VARCHAR(150) NOT NULL,
-  rol_revisor     VARCHAR(100),
-  decision        VARCHAR(50)  NOT NULL,
-  formulario_correcto  BOOLEAN,
-  requiere_correccion  BOOLEAN DEFAULT false,
-  observacion     TEXT,
-  fecha_revision  TIMESTAMP DEFAULT now(),
-  CHECK (decision IN ('ACEPTADA', 'OBSERVADA', 'RECHAZADA', 'CORREGIDA', 'EN_REVISION'))
-);
+-- (revisiones_oficiales eliminada — auditoria_oficial cubre el mismo caso de uso.)
 
--- ── 14. comparaciones_rrv_oficial ─────────────────────────────────────────────
+-- ── 13. comparaciones_rrv_oficial ─────────────────────────────────────────────
 -- Stores field-level comparisons between preliminary RRV and official results.
 CREATE TABLE IF NOT EXISTS comparaciones_rrv_oficial (
   id               SERIAL       PRIMARY KEY,

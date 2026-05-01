@@ -26,18 +26,27 @@ const IP = process.env.IP_ORIGEN || '127.0.0.1';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
+function decodeBuffer(buf) {
+  // Si los bytes son UTF-8 válido, los decodificamos como UTF-8;
+  // de lo contrario, los CSV exportados desde Excel suelen ser Windows-1252/latin1.
+  const utf8 = buf.toString('utf8');
+  if (!utf8.includes('�')) return utf8;
+  return buf.toString('latin1');
+}
+
 function readCsv(filename) {
   const fullPath = path.join(CSV_DIR, filename);
   if (!fs.existsSync(fullPath)) {
     throw new Error(`CSV file not found: ${fullPath}`);
   }
-  const content = fs.readFileSync(fullPath);
-  return parse(content, {
-    columns: true,
+  const text = decodeBuffer(fs.readFileSync(fullPath));
+  return parse(text, {
+    // Renombra cualquier cabecera vacía a __skip_N para que csv-parse no falle
+    // (el CSV de Transcripciones tiene una columna sin nombre en la posición 22).
+    columns: header => header.map((h, i) => (h && h.trim()) ? h.trim() : `__skip_${i}`),
     skip_empty_lines: true,
     trim: true,
     relax_column_count: true,
-    encoding: 'latin1',
   });
 }
 

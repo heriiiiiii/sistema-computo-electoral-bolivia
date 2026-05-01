@@ -2,10 +2,14 @@ import { Injectable, Inject } from '@nestjs/common';
 import { Pool } from 'pg';
 import { DB_POOL } from '../database/database.module';
 import { dbQuery } from '../common/db.util';
+import { LogService } from '../common/log.service';
 
 @Injectable()
 export class AuditoriaService {
-  constructor(@Inject(DB_POOL) private readonly pool: Pool) {}
+  constructor(
+    @Inject(DB_POOL) private readonly pool: Pool,
+    private readonly logFile: LogService,
+  ) {}
 
   async log(
     entidad: string,
@@ -57,5 +61,13 @@ export class AuditoriaService {
         (origen, codigo_mesa, acta_oficial_id, tipo, descripcion, severidad, estado, detectado_por)
       VALUES ('CSV', $1, $2, $3, $4, $5, 'ABIERTA', $6)
     `, [codigoMesa, actaOficialId, tipo, descripcion, severidad, detectadoPor]);
+
+    this.logFile.inconsistencia({
+      codigoMesa,
+      actaOficialId,
+      tipo,
+      mensaje: descripcion,
+      severidad,
+    });
   }
 }

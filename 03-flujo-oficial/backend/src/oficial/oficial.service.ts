@@ -6,8 +6,18 @@ import { DB_POOL } from '../database/database.module';
 import { dbQuery } from '../common/db.util';
 import { AuditoriaService } from '../auditoria/auditoria.service';
 import { ValidacionService } from './validacion.service';
+import { LogService } from '../common/log.service';
 
 const FRANJA_DEFAULT = 'PRESIDENTE';
+
+// Detecta si el buffer es UTF-8 válido; si no, lo decodifica como Windows-1252/latin1.
+// Esto resuelve los caracteres especiales (tildes, ñ, í) sin importar cómo se exportó el CSV.
+function decodeCsvBuffer(buf: Buffer): string {
+  const utf8 = buf.toString('utf8');
+  // El replacement char U+FFFD aparece cuando los bytes no eran UTF-8 válido.
+  if (!utf8.includes('�')) return utf8;
+  return buf.toString('latin1');
+}
 
 @Injectable()
 export class OficialService {
@@ -15,6 +25,7 @@ export class OficialService {
     @Inject(DB_POOL) private readonly pool: Pool,
     private readonly auditoria: AuditoriaService,
     private readonly validacion: ValidacionService,
+    private readonly logFile: LogService,
   ) {}
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -58,10 +69,11 @@ export class OficialService {
 
     let rows: any[];
     try {
-      // Decode buffer as latin1 (CSVs use latin1 encoding with accented chars)
-      const csvText = fileBuffer.toString('latin1');
+      // Detecta encoding del CSV: si parece UTF-8 lo decodifica como UTF-8,
+      // si no, lo decodifica como Windows-1252/latin1 (Excel exporta así por defecto en es-BO).
+      const csvText = decodeCsvBuffer(fileBuffer);
       rows = csvParse(csvText, {
-        columns: true,
+        columns: (header: string[]) => header.map((h, i) => (h && h.trim()) ? h.trim() : `__skip_${i}`),
         skip_empty_lines: true,
         trim: true,
         relax_column_count: true,
@@ -88,6 +100,7 @@ export class OficialService {
       observaciones: String(r.Observaciones || '').trim(),
       aperturaHora: this.n(r.AperturaHora), aperturaMinutos: this.n(r.AperturaMinutos),
       cierreHora: this.n(r.CierreHora), cierreMinutos: this.n(r.CierreMinutos),
+      // La columna 22 sin nombre del CSV de transcripciones se ignora explícitamente.
     }));
 
     const result = await this.bulkActas({
@@ -129,18 +142,98 @@ export class OficialService {
 
     const parties = await this.getParties();
     if (parties.size === 0) {
-      throw new Error('No parties found in DB. Run module 01 seed first.');
+      throw new Error('No hay partidos en la BD (revisar 04-seed-parties-candidates.sql del módulo 01).');
     }
+
+    const recintosPerdidos = new Map<string, { mesas: number; votos: number }>();
+    const errorsByCause = new Map<string, number>();
+    const observedByRule = new Map<string, number>();
 
     for (const row of payload.rows) {
       try {
-        const estado = await this.processActa(row, franja, parties, payload.usuarioCarga, payload.ipOrigen, payload.importacionId);
+        const estado = await this.processActa(row, franja, parties, payload.usuarioCarga, payload.ipOrigen, payload.importacionId, observedByRule);
         if (estado === 'VALIDADA') result.validadas++;
         else result.observadas++;
       } catch (e) {
         result.erroresCriticos++;
-        result.errores.push({ row: `${row.codigoRecinto}-${row.nroMesa}`, error: e.message });
+        const msg = e instanceof Error ? e.message : String(e);
+        result.errores.push({ row: `${row.codigoRecinto}-${row.nroMesa}`, error: msg });
+
+        // Clasificar la causa para el resumen
+        let causa = 'OTRO';
+        if (msg.includes('no encontrada') || msg.includes('not found')) causa = 'MESA_NO_ENCONTRADA';
+        else if (msg.includes('partidos')) causa = 'SIN_PARTIDOS';
+        else if (msg.toLowerCase().includes('duplicate') || msg.includes('unique')) causa = 'DUPLICADO';
+        else if (msg.toLowerCase().includes('check')) causa = 'CHECK_CONSTRAINT';
+        errorsByCause.set(causa, (errorsByCause.get(causa) || 0) + 1);
+
+        // Log línea-a-línea de TODO error crítico (no sólo mesa no encontrada)
+        const sumaP = this.n(row.p1) + this.n(row.p2) + this.n(row.p3) + this.n(row.p4);
+        const totalRow = sumaP + this.n(row.votosBlancos) + this.n(row.votosNulos);
+        this.logFile.cargaError({
+          archivo: 'Transcripciones.csv',
+          motivo: `ERROR_CRITICO_${causa}`,
+          detalle: {
+            codigoRecinto: row.codigoRecinto, nroMesa: row.nroMesa,
+            codigoActaCsv: String(row.codigoActaCsv || ''),
+            error: msg,
+            votosPerdidos: totalRow,
+            p1: this.n(row.p1), p2: this.n(row.p2), p3: this.n(row.p3), p4: this.n(row.p4),
+            votosBlancos: this.n(row.votosBlancos), votosNulos: this.n(row.votosNulos),
+            observaciones: String(row.observaciones || '').trim() || null,
+          },
+        });
+
+        if (causa === 'MESA_NO_ENCONTRADA') {
+          const key = String(row.codigoRecinto || '').trim() || '(sin recinto)';
+          const cur = recintosPerdidos.get(key) || { mesas: 0, votos: 0 };
+          cur.mesas++; cur.votos += totalRow;
+          recintosPerdidos.set(key, cur);
+        }
       }
+    }
+
+    // Resumen de errores críticos
+    if (result.erroresCriticos > 0) {
+      const desglose = Object.fromEntries(errorsByCause);
+      let topRecintos: any[] = [];
+      let mesasTotal = 0, votosTotal = 0;
+      if (recintosPerdidos.size > 0) {
+        topRecintos = [...recintosPerdidos.entries()]
+          .sort((a, b) => b[1].votos - a[1].votos)
+          .slice(0, 30)
+          .map(([codigoRecinto, v]) => {
+            mesasTotal += v.mesas; votosTotal += v.votos;
+            return { codigoRecinto, mesasOmitidas: v.mesas, votosPerdidos: v.votos };
+          });
+      }
+      this.logFile.cargaError({
+        archivo: 'Transcripciones.csv',
+        motivo: 'RESUMEN_ERRORES_CRITICOS',
+        detalle: {
+          totalCriticos: result.erroresCriticos,
+          desglosePorCausa: desglose,
+          recintosFaltantes: recintosPerdidos.size,
+          mesasOmitidas: mesasTotal,
+          votosPerdidos: votosTotal,
+          topRecintos,
+        },
+      });
+    }
+
+    // Resumen de OBSERVED actas (qué reglas R1..R5 se rompieron y cuántas veces)
+    if (result.observadas > 0) {
+      const desglose = Object.fromEntries(
+        [...observedByRule.entries()].sort((a, b) => b[1] - a[1])
+      );
+      this.logFile.inconsistencia({
+        codigoMesa: 'BULK',
+        actaOficialId: null,
+        tipo: 'RESUMEN_OBSERVADAS',
+        mensaje: `${result.observadas} actas pasaron a OBSERVADA`,
+        severidad: 'MEDIA',
+        contexto: { desglosePorRegla: desglose },
+      });
     }
 
     return result;
@@ -153,19 +246,64 @@ export class OficialService {
     usuarioCarga: string,
     ipOrigen: string,
     importacionId: number,
+    observedByRule?: Map<string, number>,
   ): Promise<string> {
     const codigoRecinto = String(row.codigoRecinto || '').trim();
     const nroMesa = this.n(row.nroMesa);
-    const codigoMesa = `${codigoRecinto}-${nroMesa}`;
+    let codigoMesa = `${codigoRecinto}-${nroMesa}`;
 
-    const mesaRes = await dbQuery(this.pool,
+    let mesaRes = await dbQuery(this.pool,
       'SELECT id, cantidad_habilitada FROM mesas WHERE codigo_mesa = $1',
       [codigoMesa],
     );
-    if (mesaRes.rows.length === 0) throw new Error(`Mesa ${codigoMesa} not found`);
+
+    // Fallback estricto: si el CSV trae CodigoRecinto truncado, sólo aceptamos el match
+    // si hay UN ÚNICO recinto cuyo código empieza así para esa mesa (evita ambigüedad).
+    if (mesaRes.rows.length === 0 && codigoRecinto && codigoRecinto.length < 10) {
+      const alt = await dbQuery(this.pool,
+        `SELECT m.id, m.cantidad_habilitada, m.codigo_mesa
+           FROM mesas m
+           JOIN recintos r ON r.id = m.recinto_id
+          WHERE r.codigo_recinto LIKE $1 AND m.numero_mesa = $2`,
+        [`${codigoRecinto}%`, nroMesa],
+      );
+      if (alt.rows.length === 1) {
+        mesaRes = alt;
+        codigoMesa = alt.rows[0].codigo_mesa;
+      } else if (alt.rows.length > 1) {
+        this.logFile.cargaError({
+          archivo: 'Transcripciones.csv',
+          motivo: 'RECINTO_AMBIGUO',
+          detalle: { codigoRecinto, nroMesa, candidatos: alt.rows.length },
+        });
+      }
+    }
+
+    if (mesaRes.rows.length === 0) {
+      const sumaP = this.n(row.p1) + this.n(row.p2) + this.n(row.p3) + this.n(row.p4);
+      const totalRow = sumaP + this.n(row.votosBlancos) + this.n(row.votosNulos);
+      // (no escribimos al log aquí — bulkActas registra UNA línea por error crítico)
+      // Registramos como inconsistencia ABIERTA en BD: estas actas NO se computan
+      // (no tienen recinto/municipio/depto válido) y deben quedar visibles.
+      await dbQuery(this.pool, `
+        INSERT INTO inconsistencias
+          (origen, codigo_mesa, tipo, descripcion, severidad, estado, detectado_por)
+        VALUES ('CSV', $1, 'MESA_NO_ENCONTRADA', $2, 'CRITICA', 'ABIERTA', 'SISTEMA')
+      `, [codigoMesa, `Recinto ${codigoRecinto} no existe en RecintosElectorales. Votos no computados: ${totalRow}. Obs: ${String(row.observaciones || '').trim()}`]);
+      throw new Error(`Mesa ${codigoMesa} no encontrada (votos NO computados: ${totalRow})`);
+    }
 
     const mesaId: number = mesaRes.rows[0].id;
     const codigoActa = `OF-${codigoRecinto}-${nroMesa}-${franja}`;
+    const codigoActaCsv = String(row.codigoActaCsv || '').trim() || null;
+
+    // Validación de horarios provenientes del CSV (rango y consistencia apertura<cierre).
+    const aperturaHora = this.n(row.aperturaHora);
+    const aperturaMin  = this.n(row.aperturaMinutos);
+    const cierreHora   = this.n(row.cierreHora);
+    const cierreMin    = this.n(row.cierreMinutos);
+    // Validación horaria detallada (H1..H4) la hace el ValidacionService;
+    // aquí sólo persistimos los valores crudos que vienen del CSV.
 
     const voteData = {
       p1: this.n(row.p1), p2: this.n(row.p2), p3: this.n(row.p3), p4: this.n(row.p4),
@@ -175,9 +313,13 @@ export class OficialService {
       papeletasAnfora: this.n(row.papeletasAnfora),
       papeletasNoUtilizadas: this.n(row.papeletasNoUtilizadas),
       habilitados: this.n(row.votantesHabilitados),
+      aperturaHora, aperturaMinutos: aperturaMin,
+      cierreHora,   cierreMinutos: cierreMin,
+      observaciones: String(row.observaciones || '').trim(),
     };
 
-    const validaciones = this.validacion.validate(voteData);
+    // Sólo guardamos validaciones con problema (ERROR/WARNING). Las OK son ruido.
+    const validaciones = this.validacion.validateFailed(voteData);
     const hasErrors = validaciones.some(v => v.resultado === 'ERROR');
     const estado = hasErrors ? 'OBSERVADA' : 'VALIDADA';
 
@@ -185,12 +327,14 @@ export class OficialService {
 
     const actaRes = await dbQuery(this.pool,
       `INSERT INTO actas_oficiales
-         (mesa_id, csv_importacion_id, codigo_acta, franja,
+         (mesa_id, csv_importacion_id, codigo_acta, codigo_acta_csv, franja,
           votos_validos, votos_blancos, votos_nulos, total_votos,
           papeletas_en_anfora, papeletas_no_utilizadas,
+          apertura_hora, apertura_minutos, cierre_hora, cierre_minutos,
           estado, fuente, usuario_importacion, observacion)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,'CSV',$12,$13)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,'CSV',$17,$18)
        ON CONFLICT (codigo_acta) DO UPDATE SET
+         codigo_acta_csv = EXCLUDED.codigo_acta_csv,
          estado = EXCLUDED.estado,
          votos_validos = EXCLUDED.votos_validos,
          votos_blancos = EXCLUDED.votos_blancos,
@@ -198,16 +342,21 @@ export class OficialService {
          total_votos = EXCLUDED.total_votos,
          papeletas_en_anfora = EXCLUDED.papeletas_en_anfora,
          papeletas_no_utilizadas = EXCLUDED.papeletas_no_utilizadas,
+         apertura_hora = EXCLUDED.apertura_hora,
+         apertura_minutos = EXCLUDED.apertura_minutos,
+         cierre_hora = EXCLUDED.cierre_hora,
+         cierre_minutos = EXCLUDED.cierre_minutos,
          observacion = EXCLUDED.observacion
        RETURNING id`,
       [
-        mesaId, importacionId || null, codigoActa, franja,
+        mesaId, importacionId || null, codigoActa, codigoActaCsv, franja,
         Math.max(0, voteData.votosValidos),
         Math.max(0, voteData.votosBlancos),
         Math.max(0, voteData.votosNulos),
         totalVotos,
         Math.max(0, voteData.papeletasAnfora),
         Math.max(0, voteData.papeletasNoUtilizadas),
+        aperturaHora, aperturaMin, cierreHora, cierreMin,
         estado,
         usuarioCarga || 'SISTEMA',
         row.observaciones || null,
@@ -232,10 +381,29 @@ export class OficialService {
       await this.auditoria.logValidacion(actaId, v.regla, v.resultado, v.mensaje, v.severidad);
     }
 
-    // Inconsistencias para errores criticos
+    // 1 fila en BD por regla rota (auditable), pero UN SOLO log line por acta.
     const errorVals = validaciones.filter(v => v.resultado === 'ERROR');
     for (const v of errorVals) {
-      await this.auditoria.logInconsistencia(codigoMesa, actaId, v.regla, v.mensaje, v.severidad);
+      if (observedByRule) observedByRule.set(v.regla, (observedByRule.get(v.regla) || 0) + 1);
+      // BD only — no escribimos al archivo aquí.
+      await dbQuery(this.pool, `
+        INSERT INTO inconsistencias
+          (origen, codigo_mesa, acta_oficial_id, tipo, descripcion, severidad, estado, detectado_por)
+        VALUES ('CSV', $1, $2, $3, $4, $5, 'ABIERTA', 'SISTEMA')
+      `, [codigoMesa, actaId, v.regla, v.mensaje, v.severidad]);
+    }
+    if (errorVals.length > 0) {
+      this.logFile.inconsistencia({
+        codigoMesa,
+        actaOficialId: actaId,
+        tipo: 'OBSERVADA',
+        mensaje: `${errorVals.length} regla(s) rotas`,
+        severidad: errorVals.some(v => v.severidad === 'CRITICA') ? 'CRITICA' : 'ALTA',
+        contexto: {
+          reglas: errorVals.map(v => v.regla),
+          observacionesCsv: row.observaciones || null,
+        },
+      });
     }
 
     // Auditoria
@@ -243,6 +411,82 @@ export class OficialService {
       `Acta ${codigoActa} estado=${estado}`, ipOrigen);
 
     return estado;
+  }
+
+  // ── Recalcular acta ──────────────────────────────────────────────────────────
+  // Toma P1+P2+P3+P4 como verdad, recalcula votosValidos y totalVotos,
+  // re-corre las validaciones y, si todo queda OK, marca la acta como VALIDADA.
+  async recalcularActa(actaId: number, usuario: string, ipOrigen: string) {
+    const r = await dbQuery(this.pool, `
+      SELECT ao.id, ao.codigo_acta, ao.estado, ao.papeletas_en_anfora,
+             ao.papeletas_no_utilizadas,
+             ao.votos_blancos, ao.votos_nulos,
+             ao.apertura_hora, ao.apertura_minutos, ao.cierre_hora, ao.cierre_minutos,
+             ao.observacion,
+             m.cantidad_habilitada, m.codigo_mesa
+      FROM actas_oficiales ao
+      JOIN mesas m ON m.id = ao.mesa_id
+      WHERE ao.id = $1
+    `, [actaId]);
+    if (r.rows.length === 0) throw new Error(`Acta ${actaId} no existe`);
+    const acta = r.rows[0];
+
+    const votos = await dbQuery(this.pool, `
+      SELECT p.codigo, ro.cantidad_votos
+      FROM resultados_oficiales ro
+      JOIN partidos p ON p.id = ro.partido_id
+      WHERE ro.acta_oficial_id = $1
+    `, [actaId]);
+    const map: Record<string, number> = {};
+    for (const v of votos.rows) map[v.codigo] = Number(v.cantidad_votos) || 0;
+    const sumaPartidos = (map.P1 || 0) + (map.P2 || 0) + (map.P3 || 0) + (map.P4 || 0);
+
+    const blancos = Number(acta.votos_blancos) || 0;
+    const nulos   = Number(acta.votos_nulos)   || 0;
+    const total   = sumaPartidos + blancos + nulos;
+
+    const nuevasValidaciones = this.validacion.validate({
+      p1: map.P1 || 0, p2: map.P2 || 0, p3: map.P3 || 0, p4: map.P4 || 0,
+      votosValidos: sumaPartidos, votosBlancos: blancos, votosNulos: nulos,
+      papeletasAnfora: Number(acta.papeletas_en_anfora) || 0,
+      papeletasNoUtilizadas: Number(acta.papeletas_no_utilizadas) || 0,
+      habilitados: Number(acta.cantidad_habilitada) || 0,
+      aperturaHora: Number(acta.apertura_hora) || 0,
+      aperturaMinutos: Number(acta.apertura_minutos) || 0,
+      cierreHora: Number(acta.cierre_hora) || 0,
+      cierreMinutos: Number(acta.cierre_minutos) || 0,
+      observaciones: String(acta.observacion || ''),
+    });
+    const tieneErrores = nuevasValidaciones.some(v => v.resultado === 'ERROR');
+    const nuevoEstado = tieneErrores ? 'OBSERVADA' : 'VALIDADA';
+
+    await dbQuery(this.pool, `
+      UPDATE actas_oficiales
+         SET votos_validos = $1,
+             total_votos = $2,
+             estado = $3,
+             recalculado = TRUE,
+             usuario_validacion = $4,
+             fecha_validacion = now()
+       WHERE id = $5
+    `, [sumaPartidos, total, nuevoEstado, usuario || 'WEB_UI', actaId]);
+
+    await dbQuery(this.pool,
+      `DELETE FROM validaciones_oficiales WHERE acta_oficial_id = $1`,
+      [actaId],
+    );
+    for (const v of nuevasValidaciones) {
+      await this.auditoria.logValidacion(actaId, v.regla, v.resultado, v.mensaje, v.severidad, usuario);
+    }
+
+    await this.auditoria.log('actas_oficiales', actaId, usuario, 'RECALCULAR_ACTA',
+      `Acta ${acta.codigo_acta}: VotosValidos=${sumaPartidos} (P1+P2+P3+P4), estado=${nuevoEstado}`,
+      ipOrigen);
+
+    return {
+      actaId, codigoActa: acta.codigo_acta, estadoAnterior: acta.estado,
+      estadoNuevo: nuevoEstado, votosValidos: sumaPartidos, totalVotos: total,
+    };
   }
 
   // ── Queries ───────────────────────────────────────────────────────────────────
