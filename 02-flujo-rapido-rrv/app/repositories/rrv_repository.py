@@ -32,6 +32,31 @@ class RRVRepository:
         )
         return result.modified_count
 
+    def upsert_resultado(self, resultado_data):
+        now = datetime.now(timezone.utc)
+        acta_id = resultado_data.get("actaId")
+
+        set_data = dict(resultado_data)
+        set_data["updatedAt"] = now
+        set_data.pop("createdAt", None)
+
+        result = self.resultados.update_one(
+            {"actaId": acta_id},
+            {
+                "$set": set_data,
+                "$setOnInsert": {
+                    "createdAt": resultado_data.get("createdAt") or now,
+                },
+            },
+            upsert=True
+        )
+
+        return {
+            "matchedCount": result.matched_count,
+            "modifiedCount": result.modified_count,
+            "upsertedId": str(result.upserted_id) if result.upserted_id else None,
+        }
+
     def list_actas(self, filters=None, limit=50):
         query = filters or {}
 
@@ -54,6 +79,12 @@ class RRVRepository:
                 {"archivo.hashArchivo": hash_archivo}
             ]
         }
+        affected_actas = list(self.actas.find(query, {"actaId": 1}))
+        affected_acta_ids = [
+            item.get("actaId")
+            for item in affected_actas
+            if item.get("actaId")
+        ]
 
         error = {
             "codigo": "CONFLICTO_MESA_O_HASH",
@@ -77,6 +108,22 @@ class RRVRepository:
                 }
             }
         )
+
+        if affected_acta_ids:
+            self.resultados.update_many(
+                {"actaId": {"$in": affected_acta_ids}},
+                {
+                    "$set": {
+                        "estadoActa": "SOSPECHOSA",
+                        "incluidoEnDashboard": False,
+                        "validacionResumen.esValida": False,
+                        "validacionResumen.esDuplicada": True,
+                        "validacionResumen.esSospechosa": True,
+                        "validacionResumen.requiereRevisionManual": True,
+                        "updatedAt": now,
+                    }
+                },
+            )
 
         return result.modified_count
 

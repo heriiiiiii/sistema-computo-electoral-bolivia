@@ -32,6 +32,13 @@ function ensureCollection(name, options) {
 // ── 1. rrv_actas ─────────────────────────────────────────────────────────────
 //  One document per received acta image/PDF. Does NOT store binary files.
 //  The same mesa can have multiple actas (duplicates are kept for audit).
+//
+//  Optional `source` object describes the explicit origin of every record so
+//  the evaluator can inspect it directly in MongoDB. It is additive and lives
+//  alongside the legacy `fuente` string. Shape:
+//    source: {
+//      tipo, canal, modulo, endpoint, descripcion, generadoPor, fechaRegistro
+//    }
 ensureCollection("rrv_actas", {
   validator: {
     $jsonSchema: {
@@ -44,6 +51,19 @@ ensureCollection("rrv_actas", {
           bsonType: "string",
           enum: ["APP_MOVIL", "CARGA_WEB", "SISTEMA"],
           description: "SMS must not create a full rrv_actas document"
+        },
+        source: {
+          bsonType: "object",
+          description: "Explicit origin of the record (RRV standardized field)",
+          properties: {
+            tipo:         { bsonType: "string" },
+            canal:        { bsonType: "string" },
+            modulo:       { bsonType: "string" },
+            endpoint:     { bsonType: ["string", "null"] },
+            descripcion:  { bsonType: ["string", "null"] },
+            generadoPor:  { bsonType: ["string", "null"] },
+            fechaRegistro:{ bsonType: ["date", "null"] }
+          }
         },
         estado: {
           bsonType: "string",
@@ -69,6 +89,19 @@ ensureCollection("rrv_sms", {
         codigoMesa: { bsonType: "string" },
         numeroOrigen: { bsonType: "string" },
         contenidoOriginal: { bsonType: "string" },
+        source: {
+          bsonType: "object",
+          description: "Explicit origin of the SMS (RRV standardized field)",
+          properties: {
+            tipo:         { bsonType: "string" },
+            canal:        { bsonType: "string" },
+            modulo:       { bsonType: "string" },
+            endpoint:     { bsonType: ["string", "null"] },
+            descripcion:  { bsonType: ["string", "null"] },
+            generadoPor:  { bsonType: ["string", "null"] },
+            fechaRegistro:{ bsonType: ["date", "null"] }
+          }
+        },
         estado: {
           bsonType: "string",
           enum: ["RECIBIDO", "VALIDO", "INVALIDO", "SOSPECHOSO", "DUPLICADO"]
@@ -141,6 +174,19 @@ ensureCollection("rrv_eventos", {
         fechaEvento: { bsonType: "date" },
         procesado:  { bsonType: "bool" },
         intentos:   { bsonType: "int" },
+        source: {
+          bsonType: "object",
+          description: "Explicit origin of the event (RRV standardized field)",
+          properties: {
+            tipo:         { bsonType: "string" },
+            canal:        { bsonType: "string" },
+            modulo:       { bsonType: "string" },
+            endpoint:     { bsonType: ["string", "null"] },
+            descripcion:  { bsonType: ["string", "null"] },
+            generadoPor:  { bsonType: ["string", "null"] },
+            fechaRegistro:{ bsonType: ["date", "null"] }
+          }
+        },
         createdAt:  { bsonType: "date" }
       }
     }
@@ -165,6 +211,19 @@ ensureCollection("rrv_logs", {
         severidad: {
           bsonType: "string",
           enum: ["INFO", "WARNING", "ERROR", "CRITICAL"]
+        },
+        source: {
+          bsonType: "object",
+          description: "Explicit origin of the log (RRV standardized field)",
+          properties: {
+            tipo:         { bsonType: "string" },
+            canal:        { bsonType: "string" },
+            modulo:       { bsonType: "string" },
+            endpoint:     { bsonType: ["string", "null"] },
+            descripcion:  { bsonType: ["string", "null"] },
+            generadoPor:  { bsonType: ["string", "null"] },
+            fechaRegistro:{ bsonType: ["date", "null"] }
+          }
         },
         createdAt: { bsonType: "date" }
       }

@@ -26,7 +26,8 @@ async def receive_acta(
     nombreOperador: str = Form(...),
     dispositivo: str = Form(...),
     latitud: float = Form(...),
-    longitud: float = Form(...)
+    longitud: float = Form(...),
+    sourceTipo: Optional[str] = Form(default=None)
 ):
     try:
         ip_origen = request.client.host if request.client else None
@@ -41,7 +42,8 @@ async def receive_acta(
             dispositivo=dispositivo,
             latitud=latitud,
             longitud=longitud,
-            ip_origen=ip_origen
+            ip_origen=ip_origen,
+            source_tipo=sourceTipo
         )
 
         return result
@@ -85,7 +87,8 @@ async def receive_acta_auto(
     nombreOperador: Optional[str] = Form(default=None),
     dispositivo: Optional[str] = Form(default=None),
     latitud: Optional[float] = Form(default=None),
-    longitud: Optional[float] = Form(default=None)
+    longitud: Optional[float] = Form(default=None),
+    sourceTipo: Optional[str] = Form(default=None)
 ):
     try:
         ip_origen = request.client.host if request.client else None
@@ -97,7 +100,8 @@ async def receive_acta_auto(
             dispositivo=dispositivo or "carga-web-auto",
             latitud=latitud if latitud is not None else 0,
             longitud=longitud if longitud is not None else 0,
-            ip_origen=ip_origen
+            ip_origen=ip_origen,
+            source_tipo=sourceTipo
         )
 
         return result

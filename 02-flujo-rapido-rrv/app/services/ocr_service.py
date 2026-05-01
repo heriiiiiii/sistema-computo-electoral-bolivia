@@ -216,6 +216,64 @@ class OCRService:
         except Exception:
             return ""
 
+    def inspect_pdf(self, file_path):
+        """Inspecciona el PDF y devuelve un diagnostico defensivo.
+
+        - canOpen: True si fitz logro abrir el archivo
+        - hasUsefulText: True si contiene texto digital aprovechable
+        - text: texto nativo extraido (puede estar vacio)
+        - error: detalle del error si canOpen=False
+
+        Sirve para distinguir un PDF corrupto (RECHAZADA) de un PDF plano
+        (PDF_PLANO -> OCR fallback -> PENDIENTE_REVISION si OCR falla).
+        """
+        try:
+            document = fitz.open(file_path)
+        except Exception as error:
+            return {
+                "canOpen": False,
+                "hasUsefulText": False,
+                "text": "",
+                "error": str(error),
+            }
+
+        try:
+            pages_text = []
+
+            for page in document:
+                pages_text.append(page.get_text("text"))
+
+            text = "\n".join(pages_text).strip()
+        except Exception as error:
+            try:
+                document.close()
+            except Exception:
+                pass
+
+            return {
+                "canOpen": True,
+                "hasUsefulText": False,
+                "text": "",
+                "error": f"PDF_TEXT_READ_FAILED: {error}",
+            }
+
+        try:
+            document.close()
+        except Exception:
+            pass
+
+        # Heuristica: requerimos al menos 30 caracteres no vacios para
+        # considerar el PDF "con texto util". Un PDF escaneado tipicamente
+        # tiene 0 caracteres o ruido residual minimo.
+        useful = len(re.sub(r"\s", "", text)) >= 30
+
+        return {
+            "canOpen": True,
+            "hasUsefulText": useful,
+            "text": text,
+            "error": None,
+        }
+
     def extract_acta_metadata_from_pdf(self, file_path, acta_id=None):
         pdf_text = self.extract_pdf_native_text(file_path)
 

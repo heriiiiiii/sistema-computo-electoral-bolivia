@@ -39,6 +39,15 @@ const actas = [
     codigoTerritorial: "10101",
 
     fuente: "APP_MOVIL",
+    source: {
+      tipo: "APP_MOVIL_O_CARGA_WEB",
+      canal: "RRV_ACTA",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/actas",
+      descripcion: "Acta recibida con metadatos manuales desde app movil o carga web",
+      generadoPor: "USR-JM-001",
+      fechaRegistro: new Date("2025-10-19T18:32:14Z"),
+    },
     estado: "PUBLICADA",
 
     ubicacion: {
@@ -155,6 +164,15 @@ const actas = [
     codigoTerritorial: "10101",
 
     fuente: "CARGA_WEB",
+    source: {
+      tipo: "CARGA_WEB_AUTOMATICA",
+      canal: "RRV_ACTA_AUTO",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/actas/auto",
+      descripcion: "Acta procesada automaticamente desde PDF o imagen",
+      generadoPor: "USR-OP-003",
+      fechaRegistro: new Date("2025-10-19T19:10:33Z"),
+    },
     estado: "VALIDADA",
 
     ubicacion: {
@@ -257,6 +275,15 @@ const actas = [
     codigoTerritorial: "10101",
 
     fuente: "APP_MOVIL",
+    source: {
+      tipo: "APP_MOVIL_O_CARGA_WEB",
+      canal: "RRV_ACTA",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/actas",
+      descripcion: "Acta recibida con metadatos manuales desde app movil o carga web",
+      generadoPor: "USR-PA-002",
+      fechaRegistro: new Date("2025-10-19T18:55:21Z"),
+    },
     estado: "SOSPECHOSA",
 
     ubicacion: {
@@ -378,6 +405,15 @@ const actas = [
     codigoTerritorial: "10101",
 
     fuente: "APP_MOVIL",
+    source: {
+      tipo: "APP_MOVIL_O_CARGA_WEB",
+      canal: "RRV_ACTA",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/actas",
+      descripcion: "Acta recibida con metadatos manuales desde app movil o carga web",
+      generadoPor: "USR-OP-003",
+      fechaRegistro: new Date("2025-10-19T19:22:05Z"),
+    },
     estado: "RECHAZADA",
 
     ubicacion: {
@@ -466,6 +502,15 @@ const actas = [
     codigoTerritorial: "10101",
 
     fuente: "CARGA_WEB",
+    source: {
+      tipo: "CARGA_LOTE",
+      canal: "RRV_ACTA_LOTE",
+      modulo: "02-flujo-rapido-rrv",
+      endpoint: "POST /api/rrv/actas/auto",
+      descripcion: "Acta enviada por script de carga masiva desde carpeta",
+      generadoPor: "operador-lote",
+      fechaRegistro: new Date("2025-10-19T20:45:00Z"),
+    },
     estado: "RECIBIDA",
 
     ubicacion: {
