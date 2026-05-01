@@ -19,7 +19,16 @@ TIPOS_LOG_RRV = [
     "MESA_INVALIDA",
     "TOTAL_INCOHERENTE",
     "ARCHIVO_INVALIDO",
-    "CLUSTER_ERROR"
+    "CLUSTER_ERROR",
+    "PDF_PLANO",
+    "MONGO_WRITE_ERROR",
+    "OBSERVACION_ACTA",
+    "FORMULARIO_INVALIDO",
+    "FIRMA_HUELLA_INVALIDA",
+    "FECHA_INVALIDA",
+    "HORARIO_INVALIDO",
+    "UBICACION_INVALIDA",
+    "PAPELETA_INVALIDA"
 ]
 
 SEVERIDADES_LOG_RRV = [
@@ -51,5 +60,5 @@ COLECCIONES_RRV = {
     "eventos": "rrv_eventos",
     "logs": "rrv_logs",
     "cluster_status": "rrv_cluster_status",
-    "resultados": "rrv_resultados_preliminares"
+    "resultados": "rrv_resultados"
 }
