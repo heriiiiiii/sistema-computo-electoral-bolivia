@@ -142,13 +142,7 @@ export default function TecnicoPage() {
           icon={<Gauge />}
         />
 
-        <KpiCard
-          title="Disponibilidad"
-          value={formatPercent(metricasSeguras.disponibilidadPorcentual)}
-          description="Disponibilidad reportada por backend RRV"
-          status={getStatusByAvailability(metricasSeguras.disponibilidadPorcentual)}
-          icon={<Activity />}
-        />
+        
 
         <KpiCard
           title="Clústeres activos"
@@ -156,70 +150,6 @@ export default function TecnicoPage() {
           description="Nodos reportados como ACTIVO por las APIs"
           status={clusters.length > 0 && clustersActivos === clusters.length ? 'POSITIVO' : 'ALERTA'}
           icon={<ServerCog />}
-        />
-
-        <KpiCard
-          title="Clústeres degradados"
-          value={formatNumber(clustersDegradados)}
-          description="Nodos reportados como DEGRADADO por las APIs"
-          status={clustersDegradados > 0 ? 'ALERTA' : 'POSITIVO'}
-          icon={<AlertTriangle />}
-        />
-
-        <KpiCard
-          title="Clústeres caídos"
-          value={formatNumber(clustersCaidos)}
-          description="Nodos reportados como CAIDO por las APIs"
-          status={clustersCaidos > 0 ? 'CRITICO' : 'POSITIVO'}
-          icon={<DatabaseZap />}
-        />
-
-        <KpiCard
-          title="Errores última hora"
-          value={formatNumber(metricasSeguras.erroresUltimaHora)}
-          description="Errores reportados por backend RRV"
-          status={getStatusByCount(metricasSeguras.erroresUltimaHora, 1, 10)}
-          icon={<AlertTriangle />}
-        />
-
-        <KpiCard
-          title="Reintentos última hora"
-          value={formatNumber(metricasSeguras.reintentosUltimaHora)}
-          description="Reintentos reportados por backend RRV"
-          status={getStatusByCount(metricasSeguras.reintentosUltimaHora, 1, 10)}
-          icon={<RefreshCcw />}
-        />
-
-        <KpiCard
-          title="SMS inválidos"
-          value={formatNumber(metricasSeguras.smsInvalidos)}
-          description="Reportes SMS inválidos informados por backend"
-          status={getStatusByCount(metricasSeguras.smsInvalidos, 1, 10)}
-          icon={<Smartphone />}
-        />
-
-        <KpiCard
-          title="Números no autorizados"
-          value={formatNumber(metricasSeguras.numerosNoAutorizados)}
-          description="Intentos desde números no autorizados reportados por backend"
-          status={getStatusByCount(metricasSeguras.numerosNoAutorizados, 1, 5)}
-          icon={<Ban />}
-        />
-
-        <KpiCard
-          title="Actas sospechosas"
-          value={formatNumber(metricasSeguras.actasSospechosas)}
-          description="Actas marcadas por backend para revisión"
-          status={getStatusByCount(metricasSeguras.actasSospechosas, 1, 20)}
-          icon={<ShieldAlert />}
-        />
-
-        <KpiCard
-          title="Intentos duplicados"
-          value={formatNumber(metricasSeguras.intentosDuplicados)}
-          description="Duplicados reportados por backend RRV"
-          status={getStatusByCount(metricasSeguras.intentosDuplicados, 1, 10)}
-          icon={<DatabaseZap />}
         />
       </div>
 

@@ -11,7 +11,6 @@ export default function ActasTable({ data }: ActasTableProps) {
       <table className="data-table">
         <thead>
           <tr>
-            <th>Acta ID</th>
             <th>Código mesa</th>
             <th>Recinto</th>
             <th>Municipio</th>
@@ -30,7 +29,6 @@ export default function ActasTable({ data }: ActasTableProps) {
           ) : (
             data.map((acta) => (
               <tr key={`${acta.fuente}-${acta.id}`}>
-                <td>{acta.id}</td>
                 <td>{acta.codigoMesa}</td>
                 <td>{acta.recinto || '—'}</td>
                 <td>{acta.municipio || '—'}</td>

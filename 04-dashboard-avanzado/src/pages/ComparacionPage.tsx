@@ -224,19 +224,7 @@ export default function ComparacionPage() {
 
         
 
-        <KpiCard
-          title="Estado de comparación"
-          value={comparacionMostrada.estado.replace(/_/g, ' ')}
-          description="Estado recibido para la comparación RRV vs Oficial"
-          status={
-            comparacionMostrada.estado === 'INCONSISTENCIA'
-              ? 'ALERTA'
-              : comparacionMostrada.estado === 'DIFERENCIA_LEVE'
-                ? 'NEUTRO'
-                : 'POSITIVO'
-          }
-          icon={oficialUsadoComoReferencia ? <AlertTriangle /> : <BadgeCheck />}
-        />
+        
       </div>
 
       <article className="panel-card">

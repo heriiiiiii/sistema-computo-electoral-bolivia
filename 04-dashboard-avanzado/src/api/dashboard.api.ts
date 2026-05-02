@@ -1,15 +1,8 @@
 /**
  * Dashboard API — adaptador HTTP del dashboard electoral.
  *
- * Este archivo NO debe calcular resultados electorales.
  * Este archivo NO debe inventar datos.
- * Este archivo NO debe decidir ganadores, diferencias ni estados reales.
- *
- * Solo:
- * - Consume endpoints HTTP.
- * - Normaliza nombres mínimos de campos.
- * - Devuelve datos al frontend.
- * - Maneja errores de red.
+ * Solo consume endpoints HTTP, normaliza campos mínimos y devuelve datos al frontend.
  */
 
 import axios from 'axios';
@@ -29,6 +22,79 @@ import type {
   MapaDepartamento,
   MetricasTecnicas
 } from '../types/dashboard.types';
+
+// ─── Candidatos oficiales ────────────────────────────────────────
+
+const CANDIDATOS_OFICIALES: Record<string, string> = {
+  P1: 'Daenerys Targaryen',
+  P2: 'Sansa Stark',
+  P3: 'Robert Baratheon',
+  P4: 'Tyrion Lannister'
+};
+
+const PARTY_COLORS: Record<string, string> = {
+  'Daenerys Targaryen': '#22c55e',
+  'Sansa Stark': '#3b82f6',
+  'Robert Baratheon': '#f59e0b',
+  'Tyrion Lannister': '#14b8a6'
+};
+
+const DEFAULT_COLOR = '#64748b';
+
+function normalizarCandidato(value?: string | null): string {
+  if (!value) return 'Sin dato';
+
+  const raw = String(value).trim();
+
+  if (!raw || raw === '-' || raw === '—') {
+    return 'Sin dato';
+  }
+
+  const key = raw
+    .toUpperCase()
+    .replace(/_/g, ' ')
+    .replace(/-/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (
+    key === 'P1' ||
+    key === 'PARTIDO 1' ||
+    key === 'PARTIDO1' ||
+    key === 'PARTIDO PRIMERO'
+  ) {
+    return CANDIDATOS_OFICIALES.P1;
+  }
+
+  if (
+    key === 'P2' ||
+    key === 'PARTIDO 2' ||
+    key === 'PARTIDO2' ||
+    key === 'PARTIDO SEGUNDO'
+  ) {
+    return CANDIDATOS_OFICIALES.P2;
+  }
+
+  if (
+    key === 'P3' ||
+    key === 'PARTIDO 3' ||
+    key === 'PARTIDO3' ||
+    key === 'PARTIDO TERCERO'
+  ) {
+    return CANDIDATOS_OFICIALES.P3;
+  }
+
+  if (
+    key === 'P4' ||
+    key === 'PARTIDO 4' ||
+    key === 'PARTIDO4' ||
+    key === 'PARTIDO CUARTO'
+  ) {
+    return CANDIDATOS_OFICIALES.P4;
+  }
+
+  return raw;
+}
 
 // ─── HTTP client ──────────────────────────────────────────────────
 
@@ -57,7 +123,7 @@ async function safeGet<T>(endpoint: string): Promise<SafeResult<T>> {
   }
 }
 
-// ─── Response shapes from backends ────────────────────────────────
+// ─── Response shapes ──────────────────────────────────────────────
 
 interface RrvResumen {
   success: boolean;
@@ -150,18 +216,7 @@ interface ComparacionBackendResponse extends Partial<ComparacionGeneral> {
   candidatos?: ComparacionGeneral['candidatos'];
 }
 
-// ─── Constants ────────────────────────────────────────────────────
-
-const PARTY_COLORS: Record<string, string> = {
-  P1: '#22c55e',
-  P2: '#3b82f6',
-  P3: '#f59e0b',
-  P4: '#14b8a6'
-};
-
-const DEFAULT_COLOR = '#64748b';
-
-// ─── Helpers mínimos de normalización ─────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────
 
 function safeInt(value: unknown): number {
   if (typeof value === 'number') {
@@ -267,15 +322,6 @@ function getOficialVotos(ofi?: OficialResumen) {
     votosValidos,
     votosBlancos,
     votosNulos,
-
-    /*
-      Corrección temporal:
-      El backend oficial actualmente NO manda totalVotos.
-      Para mostrar el total en el dashboard, se usa la suma de los campos
-      que el propio backend oficial ya entrega: validos + blancos + nulos.
-
-      Idealmente, el backend oficial debería mandar totalVotos directamente.
-    */
     totalVotos:
       totalBackend > 0
         ? totalBackend
@@ -286,8 +332,6 @@ function getOficialVotos(ofi?: OficialResumen) {
 // ─── Public API ───────────────────────────────────────────────────
 
 export const dashboardApi = {
-  // ── Resumen ───────────────────────────────────────────────────
-
   async getResumen(): Promise<DashboardResumen> {
     const [rrvResult, ofiResult] = await Promise.all([
       safeGet<RrvResumen>(DASHBOARD_ENDPOINTS.resumenRrv),
@@ -329,14 +373,7 @@ export const dashboardApi = {
     };
   },
 
-  // ── Comparación RRV vs Oficial ────────────────────────────────
-
   async getComparacion(): Promise<ComparacionGeneral> {
-    /*
-      Usa /api/dashboard/comparacion (capa intermedia del backend oficial),
-      que cruza RRV + Oficial en el lado servidor y devuelve totales reales.
-      Si la capa intermedia no responde, cae al endpoint RRV histórico.
-    */
     const merged = await safeGet<{
       success: boolean;
       data: ComparacionBackendResponse;
@@ -350,9 +387,11 @@ export const dashboardApi = {
       const rrvOnly = await safeGet<ComparacionBackendResponse>(
         DASHBOARD_ENDPOINTS.comparacionRrv
       );
+
       if (!rrvOnly.ok) {
         throw new Error('No se pudo cargar comparación desde backend.');
       }
+
       data = rrvOnly.data;
     }
 
@@ -362,11 +401,18 @@ export const dashboardApi = {
       diferenciaTotal: safeInt(data.diferenciaTotal),
       diferenciaPorcentualTotal: Number(data.diferenciaPorcentualTotal) || 0,
       estado: (data.estado || 'SIN_DATO') as ComparacionGeneral['estado'],
-      candidatos: data.candidatos || []
+      candidatos: (data.candidatos || []).map((item) => {
+        const candidato = normalizarCandidato(item.candidato || item.partido);
+
+        return {
+          ...item,
+          partido: candidato,
+          candidato,
+          color: item.color || PARTY_COLORS[candidato] || DEFAULT_COLOR
+        };
+      })
     };
   },
-
-  // ── KPIs ──────────────────────────────────────────────────────
 
   async getKpis(): Promise<DashboardKpi[]> {
     const result = await safeGet<{ success: boolean; kpis: DashboardKpi[] }>(
@@ -380,14 +426,7 @@ export const dashboardApi = {
     return result.data.kpis || [];
   },
 
-  // ── Resultados candidatos ─────────────────────────────────────
-
   async getResultadosCandidatos(): Promise<CandidateResult[]> {
-    /*
-      Esta función solo arma una tabla de lectura:
-      votos RRV desde RRV y votos oficiales desde Oficial.
-      No calcula diferencia ni estado.
-    */
     const [rrvResult, ofiResult] = await Promise.all([
       safeGet<{ success: boolean; candidatos: RrvCandidato[] }>(
         DASHBOARD_ENDPOINTS.resultadosCandidatosRrv
@@ -423,17 +462,19 @@ export const dashboardApi = {
       const rrv = rrvMap.get(codigo);
       const ofi = ofiMap.get(codigo);
 
+      const candidato = normalizarCandidato(
+        rrv?.partidoNombre || ofi?.nombre || codigo
+      );
+
       return {
-        partido: codigo,
-        candidato: rrv?.partidoNombre || ofi?.nombre || `Partido ${codigo}`,
-        color: rrv?.color || PARTY_COLORS[codigo] || DEFAULT_COLOR,
+        partido: candidato,
+        candidato,
+        color: rrv?.color || PARTY_COLORS[candidato] || DEFAULT_COLOR,
         votosRRV: safeInt(rrv?.totalVotos),
         votosOficial: safeInt(ofi?.votos)
       };
     });
   },
-
-  // ── Estado actas ──────────────────────────────────────────────
 
   async getEstadoActas(): Promise<ActStatusCount[]> {
     const [rrvResult, ofiResult] = await Promise.all([
@@ -469,14 +510,7 @@ export const dashboardApi = {
     return [...rrvItems, ...oficialItems];
   },
 
-  // ── Inconsistencias ───────────────────────────────────────────
-
   async getInconsistencias(): Promise<Inconsistencia[]> {
-    /*
-      Regla estricta:
-      No fabricamos inconsistencias oficiales a partir del resumen.
-      Mientras no exista /api/oficial/inconsistencias, se muestran las RRV.
-    */
     const result = await safeGet<{
       success: boolean;
       total: number;
@@ -489,8 +523,6 @@ export const dashboardApi = {
 
     return result.data.inconsistencias || [];
   },
-
-  // ── Geográfico ────────────────────────────────────────────────
 
   async getGeografico(): Promise<GeograficoItem[]> {
     const result = await safeGet<{
@@ -548,17 +580,17 @@ export const dashboardApi = {
         (item.estadoComparacion as GeograficoItem['estadoComparacion']) ||
         'SIN_DATO',
 
-      ganadorRRV: item.ganadorRRV || item.ganador_rrv,
-      ganadorOficial: item.ganadorOficial || item.ganador_oficial,
+      ganadorRRV: normalizarCandidato(item.ganadorRRV || item.ganador_rrv),
+      ganadorOficial: normalizarCandidato(item.ganadorOficial || item.ganador_oficial),
+
       votosGanadorRRV: safeInt(item.votosGanadorRRV || item.votos_ganador_rrv),
       votosGanadorOficial: safeInt(
         item.votosGanadorOficial || item.votos_ganador_oficial
       ),
+
       clasificacionTerritorial: item.clasificacionTerritorial
     }));
   },
-
-  // ── Métricas técnicas ─────────────────────────────────────────
 
   async getMetricasTecnicas(): Promise<MetricasTecnicas> {
     const result = await safeGet<{ success: boolean } & MetricasTecnicas>(
@@ -593,8 +625,6 @@ export const dashboardApi = {
       intentosDuplicadosEstado: resp.intentosDuplicadosEstado
     };
   },
-
-  // ── Estado clústeres ──────────────────────────────────────────
 
   async getEstadoClusters(): Promise<ClusterStatus[]> {
     const [rrvResult, ofiResult] = await Promise.all([
@@ -657,8 +687,6 @@ export const dashboardApi = {
     return clusters;
   },
 
-  // ── Actas digitalizadas ───────────────────────────────────────
-
   async getActasDigitalizadas(): Promise<ActaDigitalizada[]> {
     const [rrvResult, ofiResult] = await Promise.all([
       safeGet<{ success: boolean; actas: ActaDigitalizada[] }>(
@@ -699,8 +727,6 @@ export const dashboardApi = {
     return [...rrvActas, ...ofiActas];
   },
 
-  // ── Capa intermedia: ganador por alcance ──────────────────────
-
   async getGanador(scope: GanadorScope, codigo?: string): Promise<GanadorResponse> {
     const url =
       scope === 'nacional'        ? DASHBOARD_ENDPOINTS.ganadorNacional :
@@ -730,8 +756,6 @@ export const dashboardApi = {
 
     return response.data.data!;
   },
-
-  // ── Capa intermedia: mapa de departamentos ────────────────────
 
   async getMapaDepartamentos(): Promise<MapaDepartamento[]> {
     const r = await safeGet<{
