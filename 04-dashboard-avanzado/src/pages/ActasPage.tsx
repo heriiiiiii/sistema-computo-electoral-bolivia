@@ -24,21 +24,6 @@ import '../styles/actas.css';
 
 const ALL_OPTION: FilterOption = { label: 'Todos', value: 'TODOS' };
 
-const ESTADO_OPTIONS: FilterOption[] = [
-  ALL_OPTION,
-  { label: 'RECIBIDA', value: 'RECIBIDA' },
-  { label: 'PROCESANDO', value: 'PROCESANDO' },
-  { label: 'VALIDADA', value: 'VALIDADA' },
-  { label: 'SOSPECHOSA', value: 'SOSPECHOSA' },
-  { label: 'PENDIENTE_REVISION', value: 'PENDIENTE_REVISION' },
-  { label: 'RECHAZADA', value: 'RECHAZADA' },
-  { label: 'PUBLICADA', value: 'PUBLICADA' },
-  { label: 'IMPORTADA', value: 'IMPORTADA' },
-  { label: 'VALIDANDO', value: 'VALIDANDO' },
-  { label: 'OBSERVADA', value: 'OBSERVADA' },
-  { label: 'OFICIALIZADA', value: 'OFICIALIZADA' }
-];
-
 const FUENTE_OPTIONS: FilterOption[] = [
   ALL_OPTION,
   { label: 'RRV', value: 'RRV' },
@@ -124,6 +109,10 @@ export default function ActasPage() {
     cargarDatos();
   }, [cargarDatos]);
 
+  const estadoOptions = useMemo<FilterOption[]>(() => {
+    return buildFilterOptions(actas.map((acta) => acta.estado));
+  }, [actas]);
+
   const departamentoOptions = useMemo<FilterOption[]>(() => {
     return buildFilterOptions(actas.map((acta) => acta.departamento));
   }, [actas]);
@@ -136,6 +125,18 @@ export default function ActasPage() {
 
     return buildFilterOptions(source.map((acta) => acta.municipio));
   }, [actas, departamento]);
+
+  useEffect(() => {
+    if (estado === 'TODOS') return;
+
+    const estadoExiste = estadoOptions.some(
+      (option) => option.value === estado
+    );
+
+    if (!estadoExiste) {
+      setEstado('TODOS');
+    }
+  }, [estado, estadoOptions]);
 
   useEffect(() => {
     if (municipio === 'TODOS') return;
@@ -280,7 +281,7 @@ export default function ActasPage() {
               id: 'estado',
               label: 'Estado',
               value: estado,
-              options: ESTADO_OPTIONS,
+              options: estadoOptions,
               onChange: setEstado
             },
             {

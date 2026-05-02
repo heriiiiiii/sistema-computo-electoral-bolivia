@@ -174,10 +174,18 @@ class DashboardService:
                 cant = int(vp.get("cantidadVotos") or 0)
 
                 if cod not in totales:
-                    totales[cod] = {"partidoCodigo": cod, "partidoNombre": nom, "totalVotos": 0}
+                    totales[cod] = {
+                        "partidoCodigo": cod,
+                        "partidoNombre": nom,
+                        "totalVotos": 0,
+                    }
                 totales[cod]["totalVotos"] += cant
 
-        candidatos = sorted(totales.values(), key=lambda x: x["totalVotos"], reverse=True)
+        candidatos = sorted(
+            totales.values(),
+            key=lambda x: x["totalVotos"],
+            reverse=True,
+        )
 
         # add default color
         for c in candidatos:
@@ -192,9 +200,11 @@ class DashboardService:
     def get_estado_actas(self):
         actas = self._load_all_actas()
         conteo = {}
+
         for acta in actas:
             if not isinstance(acta, dict):
                 continue
+
             estado = acta.get("estado", "SIN_ESTADO")
             conteo[estado] = conteo.get(estado, 0) + 1
 
@@ -215,6 +225,7 @@ class DashboardService:
         for acta in actas:
             if not isinstance(acta, dict) or not self._is_suspicious(acta):
                 continue
+
             val = acta.get("validacion") or {}
             departamento, _prov, municipio, _recinto = (
                 self._resolve_territory_for_acta(acta)
@@ -223,6 +234,7 @@ class DashboardService:
             for err in val.get("errores") or []:
                 if not isinstance(err, dict):
                     continue
+
                 codigo = err.get("codigo", "DESCONOCIDO")
 
                 # skip purely visual warnings
@@ -242,6 +254,7 @@ class DashboardService:
                     "descripcion": err.get("descripcion", codigo),
                     "fecha": self._fmt_dt(acta.get("createdAt")),
                 })
+
                 if len(items) >= limit:
                     return items
 
@@ -288,14 +301,53 @@ class DashboardService:
 
     def get_geografico(self):
         actas = self._load_all_actas()
-        deptos = {}
+        buckets = {}
 
-        def _empty_bucket(nombre):
+        def _safe_int(value):
+            try:
+                return int(value or 0)
+            except (TypeError, ValueError):
+                return 0
+
+        def _make_key(
+            nivel,
+            departamento,
+            provincia=None,
+            municipio=None,
+            recinto=None,
+            codigo_mesa=None,
+        ):
+            return (
+                nivel,
+                departamento or "Sin departamento",
+                provincia or "Sin provincia",
+                municipio or "Sin municipio",
+                recinto or "Sin recinto",
+                codigo_mesa or "Sin mesa",
+            )
+
+        def _empty_bucket(
+            nivel,
+            nombre,
+            departamento,
+            provincia=None,
+            municipio=None,
+            recinto=None,
+            codigo_mesa=None,
+        ):
             return {
+                "nivel": nivel,
                 "nombre": nombre,
+                "departamento": departamento or "Sin departamento",
+                "provincia": provincia,
+                "municipio": municipio,
+                "recinto": recinto,
+                "codigoMesa": codigo_mesa,
                 "votos": 0,
+                "votosOficial": 0,
                 "actasProcesadas": 0,
                 "habilitados": 0,
+                "partidos": {},
                 "estados": {
                     "VALIDADA": 0,
                     "SOSPECHOSA": 0,
@@ -305,54 +357,256 @@ class DashboardService:
                 },
             }
 
+        def _get_or_create_bucket(
+            nivel,
+            nombre,
+            departamento,
+            provincia=None,
+            municipio=None,
+            recinto=None,
+            codigo_mesa=None,
+        ):
+            key = _make_key(
+                nivel=nivel,
+                departamento=departamento,
+                provincia=provincia,
+                municipio=municipio,
+                recinto=recinto,
+                codigo_mesa=codigo_mesa,
+            )
+
+            if key not in buckets:
+                buckets[key] = _empty_bucket(
+                    nivel=nivel,
+                    nombre=nombre,
+                    departamento=departamento,
+                    provincia=provincia,
+                    municipio=municipio,
+                    recinto=recinto,
+                    codigo_mesa=codigo_mesa,
+                )
+
+            return buckets[key]
+
+        def _extract_codigo_mesa(acta):
+            datos_acta = acta.get("datosActa") or {}
+
+            return (
+                acta.get("codigoMesa")
+                or acta.get("codigo_mesa")
+                or datos_acta.get("codigoMesa")
+                or datos_acta.get("codigo_mesa")
+                or acta.get("actaId")
+                or "Sin mesa"
+            )
+
+        def _extract_party_votes(res):
+            votos = {}
+
+            if not isinstance(res, dict):
+                return votos
+
+            for list_key in [
+                "partidos",
+                "candidatos",
+                "resultadosPartidos",
+                "votosPartidos",
+                "votosPorPartido",
+            ]:
+                items = res.get(list_key)
+
+                if isinstance(items, list):
+                    for item in items:
+                        if not isinstance(item, dict):
+                            continue
+
+                        codigo = (
+                            item.get("partidoCodigo")
+                            or item.get("codigo")
+                            or item.get("partido")
+                            or item.get("sigla")
+                            or item.get("nombre")
+                        )
+
+                        total = (
+                            item.get("totalVotos")
+                            or item.get("votos")
+                            or item.get("total")
+                        )
+
+                        if codigo:
+                            codigo_str = str(codigo)
+                            votos[codigo_str] = (
+                                votos.get(codigo_str, 0) + _safe_int(total)
+                            )
+
+            for dict_key in [
+                "partidos",
+                "votosPartidos",
+                "votosPorPartido",
+                "resultadosPartidos",
+            ]:
+                data = res.get(dict_key)
+
+                if isinstance(data, dict):
+                    for codigo, value in data.items():
+                        if isinstance(value, dict):
+                            total = (
+                                value.get("totalVotos")
+                                or value.get("votos")
+                                or value.get("total")
+                            )
+                        else:
+                            total = value
+
+                        codigo_str = str(codigo)
+                        votos[codigo_str] = votos.get(codigo_str, 0) + _safe_int(total)
+
+            for codigo in ["P1", "P2", "P3", "P4"]:
+                if codigo in res:
+                    votos[codigo] = votos.get(codigo, 0) + _safe_int(res.get(codigo))
+
+            return votos
+
+        def _add_acta_to_bucket(bucket, acta):
+            bucket["actasProcesadas"] += 1
+
+            estado = acta.get("estado") or "SIN_ESTADO"
+
+            if estado in bucket["estados"]:
+                bucket["estados"][estado] += 1
+            else:
+                bucket["estados"][estado] = 1
+
+            datos_acta = acta.get("datosActa") or {}
+            hab = datos_acta.get("cantidadHabilitados")
+
+            if hab is not None:
+                bucket["habilitados"] += _safe_int(hab)
+
+            if self._is_valid_for_totals(acta):
+                resultados = acta.get("resultados") or {}
+                res = resultados.get("presidente") or {}
+
+                bucket["votos"] += _safe_int(res.get("totalVotos"))
+
+                party_votes = _extract_party_votes(res)
+
+                for partido, votos_partido in party_votes.items():
+                    bucket["partidos"][partido] = (
+                        bucket["partidos"].get(partido, 0) + votos_partido
+                    )
+
         for acta in actas:
             if not isinstance(acta, dict):
                 continue
 
             (
                 departamento,
-                _provincia,
-                _municipio,
-                _recinto,
+                provincia,
+                municipio,
+                recinto,
             ) = self._resolve_territory_for_acta(acta)
 
-            bucket = deptos.setdefault(departamento, _empty_bucket(departamento))
-            bucket["actasProcesadas"] += 1
+            codigo_mesa = _extract_codigo_mesa(acta)
 
-            estado = acta.get("estado") or "SIN_ESTADO"
-            if estado in bucket["estados"]:
-                bucket["estados"][estado] += 1
-            else:
-                bucket["estados"][estado] = 1
+            bucket_departamento = _get_or_create_bucket(
+                nivel="DEPARTAMENTO",
+                nombre=departamento,
+                departamento=departamento,
+            )
+            _add_acta_to_bucket(bucket_departamento, acta)
 
-            if self._is_valid_for_totals(acta):
-                res = (acta.get("resultados") or {}).get("presidente") or {}
-                bucket["votos"] += int(res.get("totalVotos") or 0)
+            bucket_provincia = _get_or_create_bucket(
+                nivel="PROVINCIA",
+                nombre=provincia,
+                departamento=departamento,
+                provincia=provincia,
+            )
+            _add_acta_to_bucket(bucket_provincia, acta)
 
-            hab = (acta.get("datosActa") or {}).get("cantidadHabilitados")
-            if hab is not None:
-                try:
-                    bucket["habilitados"] += int(hab)
-                except (TypeError, ValueError):
-                    pass
+            bucket_municipio = _get_or_create_bucket(
+                nivel="MUNICIPIO",
+                nombre=municipio,
+                departamento=departamento,
+                provincia=provincia,
+                municipio=municipio,
+            )
+            _add_acta_to_bucket(bucket_municipio, acta)
+
+            bucket_recinto = _get_or_create_bucket(
+                nivel="RECINTO",
+                nombre=recinto,
+                departamento=departamento,
+                provincia=provincia,
+                municipio=municipio,
+                recinto=recinto,
+            )
+            _add_acta_to_bucket(bucket_recinto, acta)
+
+            bucket_mesa = _get_or_create_bucket(
+                nivel="MESA",
+                nombre=f"Mesa {codigo_mesa}",
+                departamento=departamento,
+                provincia=provincia,
+                municipio=municipio,
+                recinto=recinto,
+                codigo_mesa=codigo_mesa,
+            )
+            _add_acta_to_bucket(bucket_mesa, acta)
 
         result = []
-        for idx, (nombre, data) in enumerate(sorted(deptos.items()), 1):
+
+        for idx, data in enumerate(
+            sorted(
+                buckets.values(),
+                key=lambda item: (
+                    item["nivel"],
+                    item["departamento"] or "",
+                    item["provincia"] or "",
+                    item["municipio"] or "",
+                    item["recinto"] or "",
+                    item["codigoMesa"] or "",
+                ),
+            ),
+            1,
+        ):
             participacion = (
                 round((data["votos"] / data["habilitados"]) * 100, 1)
                 if data["habilitados"] > 0
                 else 0
             )
+
+            ganador_rrv = "Sin dato"
+            votos_ganador_rrv = 0
+
+            if data["partidos"]:
+                ganador_rrv, votos_ganador_rrv = max(
+                    data["partidos"].items(),
+                    key=lambda item: item[1],
+                )
+
             result.append({
-                "id": f"GEO-{idx:02d}",
-                "nivel": "DEPARTAMENTO",
-                "nombre": nombre,
-                "departamento": nombre,
+                "id": f"GEO-{idx:04d}",
+                "nivel": data["nivel"],
+                "nombre": data["nombre"],
+                "departamento": data["departamento"],
+                "provincia": data["provincia"],
+                "municipio": data["municipio"],
+                "recinto": data["recinto"],
+                "codigoMesa": data["codigoMesa"],
                 "votosRRV": data["votos"],
+                "votosOficial": data["votosOficial"],
                 "actasProcesadas": data["actasProcesadas"],
                 "participacion": participacion,
+                "estadoComparacion": "SIN_DATO",
+                "ganadorRRV": ganador_rrv,
+                "ganadorOficial": "Sin dato",
+                "votosGanadorRRV": votos_ganador_rrv,
+                "votosGanadorOficial": 0,
                 "estados": data["estados"],
             })
+
         return result
 
     # ------------------------------------------------------------------
@@ -378,8 +632,10 @@ class DashboardService:
         for log_entry in logs:
             if not isinstance(log_entry, dict):
                 continue
+
             sev = log_entry.get("severidad", "")
             tipo = log_entry.get("tipo", "")
+
             if sev == "ERROR":
                 errores += 1
             if tipo == "DUPLICADO":
@@ -417,6 +673,7 @@ class DashboardService:
             rs_name = mongo_info.get("replicaSet") or mongo_info.get("setName") or "rs0"
 
             clusters = []
+
             for idx, m in enumerate(members):
                 raw_state = m.get("stateStr") or m.get("state", "UNKNOWN")
 
@@ -486,9 +743,11 @@ class DashboardService:
         for acta in actas:
             if not isinstance(acta, dict):
                 continue
+
             departamento, _prov, municipio, recinto = (
                 self._resolve_territory_for_acta(acta)
             )
+
             items.append({
                 "id": acta.get("actaId", "SIN_ID"),
                 "codigoMesa": acta.get("codigoMesa") or "SIN_MESA",
@@ -574,6 +833,7 @@ class DashboardService:
         resumen = self.get_resumen()
 
         comparacion_candidatos = []
+
         for c in candidatos:
             comparacion_candidatos.append({
                 "partido": c["partidoCodigo"],

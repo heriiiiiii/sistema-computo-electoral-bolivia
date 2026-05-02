@@ -270,9 +270,60 @@ export default function GeograficoPage() {
   }, [data]);
 
   const territorioExacto = filtered.length === 1 ? filtered[0] : null;
+  
+const chartHeight = useMemo(() => {
+  const minHeight = 520;
+  const maxHeight = 1800;
 
+  const rowHeight =
+    nivel === 'RECINTO' || nivel === 'MESA'
+      ? 34
+      : 48;
+
+  return Math.min(
+    maxHeight,
+    Math.max(minHeight, filtered.length * rowHeight + 140)
+  );
+}, [filtered.length, nivel]);
   function handleDepartmentSelect(selected: string) {
     setDepartamento((current) => (current === selected ? 'TODOS' : selected));
+  }
+
+  function handleNivelChange(value: string) {
+    const nextNivel = value as NivelGeografico;
+
+    setNivel(nextNivel);
+
+    if (nextNivel === 'DEPARTAMENTO') {
+      setMunicipio('TODOS');
+      setRecinto('TODOS');
+    }
+
+    if (nextNivel === 'PROVINCIA') {
+      setMunicipio('TODOS');
+      setRecinto('TODOS');
+    }
+
+    if (nextNivel === 'MUNICIPIO') {
+      setRecinto('TODOS');
+    }
+  }
+
+  function handleMunicipioChange(value: string) {
+    setMunicipio(value);
+
+    if (value !== 'TODOS') {
+      setNivel('MUNICIPIO');
+      setRecinto('TODOS');
+    }
+  }
+
+  function handleRecintoChange(value: string) {
+    setRecinto(value);
+
+    if (value !== 'TODOS') {
+      setNivel('RECINTO');
+    }
   }
 
   if (loading) {
@@ -416,7 +467,7 @@ export default function GeograficoPage() {
               label: 'Nivel',
               value: nivel,
               options: nivelOptions,
-              onChange: (value) => setNivel(value as NivelGeografico)
+              onChange: handleNivelChange
             },
             {
               id: 'departamento',
@@ -430,14 +481,14 @@ export default function GeograficoPage() {
               label: 'Municipio',
               value: municipio,
               options: municipioOptions,
-              onChange: setMunicipio
+              onChange: handleMunicipioChange
             },
             {
               id: 'recinto',
               label: 'Recinto / colegio',
               value: recinto,
               options: recintoOptions,
-              onChange: setRecinto
+              onChange: handleRecintoChange
             }
           ]}
         />
@@ -455,7 +506,12 @@ export default function GeograficoPage() {
           </div>
         </div>
 
-        <GeographicBarChart data={filtered} fuente={fuente} />
+        <div
+  className="geographic-chart-box"
+  style={{ height: `${chartHeight}px` }}
+>
+  <GeographicBarChart data={filtered} fuente={fuente} />
+</div>
       </article>
 
       <article className="panel-card">
@@ -504,10 +560,10 @@ export default function GeograficoPage() {
                     <td>{item.nivel}</td>
                     <td>{item.nombre}</td>
                     <td>{item.departamento}</td>
-                    <td>{item.provincia ?? '—'}</td>
-                    <td>{item.municipio ?? '—'}</td>
-                    <td>{item.recinto ?? '—'}</td>
-                    <td>{item.codigoMesa ?? '—'}</td>
+                    <td>{item.provincia || '—'}</td>
+                    <td>{item.municipio || '—'}</td>
+                    <td>{item.recinto || '—'}</td>
+                    <td>{item.codigoMesa || '—'}</td>
                     <td>{item.ganadorRRV ?? 'Sin dato'}</td>
                     <td>{item.ganadorOficial ?? 'Sin dato'}</td>
                     <td>{getVotosGanadorLabel(item, fuente)}</td>

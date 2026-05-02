@@ -9,7 +9,7 @@ import {
   YAxis
 } from 'recharts';
 import type { FuenteDatos, GeograficoItem } from '../../types/dashboard.types';
-import { formatNumber, formatTooltipValue } from '../../utils/formatters';
+import { formatTooltipValue } from '../../utils/formatters';
 
 interface GeographicBarChartProps {
   data: GeograficoItem[];
@@ -21,20 +21,34 @@ export default function GeographicBarChart({
   fuente
 }: GeographicBarChartProps) {
   return (
-    <div className="chart-box">
-      <ResponsiveContainer width="100%" height={360}>
+    <div className="chart-box geographic-bar-chart">
+      <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
           layout="vertical"
-          margin={{ top: 16, right: 24, left: 90, bottom: 10 }}
+          margin={{ top: 16, right: 28, left: 130, bottom: 20 }}
+          barCategoryGap={8}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148, 163, 184, 0.18)" />
+          <CartesianGrid
+            strokeDasharray="3 3"
+            stroke="rgba(148, 163, 184, 0.18)"
+          />
+
           <XAxis
             type="number"
             stroke="#94a3b8"
             tickFormatter={(value: number) => `${Math.round(value / 1000)}k`}
           />
-          <YAxis dataKey="nombre" type="category" stroke="#94a3b8" width={120} />
+
+          <YAxis
+            dataKey="nombre"
+            type="category"
+            stroke="#94a3b8"
+            width={180}
+            tick={{ fontSize: 12 }}
+            interval={0}
+          />
+
           <Tooltip
             formatter={(value) => formatTooltipValue(value)}
             contentStyle={{
@@ -44,6 +58,7 @@ export default function GeographicBarChart({
               color: '#e5e7eb'
             }}
           />
+
           <Legend />
 
           {(fuente === 'RRV' || fuente === 'AMBOS') && (
