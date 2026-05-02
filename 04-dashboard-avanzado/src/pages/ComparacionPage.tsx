@@ -222,21 +222,7 @@ export default function ComparacionPage() {
           icon={<BadgeCheck />}
         />
 
-        <KpiCard
-          title="Diferencia total"
-          value={formatNumber(Math.abs(comparacionMostrada.diferenciaTotal))}
-          description="Diferencia entregada por el flujo de comparación"
-          status="NEUTRO"
-          icon={<Scale />}
-        />
-
-        <KpiCard
-          title="Diferencia porcentual"
-          value={formatPercent(comparacionMostrada.diferenciaPorcentualTotal, 4)}
-          description="Porcentaje entregado por el flujo de comparación"
-          status="NEUTRO"
-          icon={<GitCompare />}
-        />
+        
 
         <KpiCard
           title="Estado de comparación"
