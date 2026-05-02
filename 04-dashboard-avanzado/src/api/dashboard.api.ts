@@ -164,7 +164,26 @@ const DEFAULT_COLOR = '#64748b';
 // ─── Helpers mínimos de normalización ─────────────────────────────
 
 function safeInt(value: unknown): number {
-  const parsed = Number(value);
+  if (typeof value === 'number') {
+    return Number.isFinite(value) ? Math.round(value) : 0;
+  }
+
+  if (value === null || value === undefined) {
+    return 0;
+  }
+
+  const raw = String(value).trim();
+
+  if (raw === '') {
+    return 0;
+  }
+
+  const normalized = /^[0-9]{1,3}(\.[0-9]{3})+$/.test(raw)
+    ? raw.replace(/\./g, '')
+    : raw.replace(/,/g, '');
+
+  const parsed = Number(normalized);
+
   return Number.isFinite(parsed) ? Math.round(parsed) : 0;
 }
 
@@ -235,21 +254,32 @@ function getOficialActas(ofi?: OficialResumen) {
 }
 
 function getOficialVotos(ofi?: OficialResumen) {
+  const votosValidos = safeInt(ofi?.data?.votos?.validos);
+  const votosBlancos = safeInt(ofi?.data?.votos?.blancos);
+  const votosNulos = safeInt(ofi?.data?.votos?.nulos);
+
+  const totalBackend = safeInt(
+    ofi?.data?.votos?.totalVotos ??
+      ofi?.data?.votos?.total
+  );
+
   return {
-    votosValidos: safeInt(ofi?.data?.votos?.validos),
-    votosBlancos: safeInt(ofi?.data?.votos?.blancos),
-    votosNulos: safeInt(ofi?.data?.votos?.nulos),
+    votosValidos,
+    votosBlancos,
+    votosNulos,
 
     /*
-      Regla estricta:
-      El frontend NO suma válidos + blancos + nulos.
-      totalVotos debe venir del backend oficial.
-      Si no viene, se muestra 0.
+      Corrección temporal:
+      El backend oficial actualmente NO manda totalVotos.
+      Para mostrar el total en el dashboard, se usa la suma de los campos
+      que el propio backend oficial ya entrega: validos + blancos + nulos.
+
+      Idealmente, el backend oficial debería mandar totalVotos directamente.
     */
-    totalVotos: safeInt(
-      ofi?.data?.votos?.totalVotos ??
-        ofi?.data?.votos?.total
-    )
+    totalVotos:
+      totalBackend > 0
+        ? totalBackend
+        : votosValidos + votosBlancos + votosNulos
   };
 }
 
