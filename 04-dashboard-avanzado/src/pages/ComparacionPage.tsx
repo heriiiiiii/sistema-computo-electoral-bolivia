@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react';
-import { BadgeCheck, GitCompare, Scale, Vote } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, BadgeCheck, GitCompare, Scale, Vote } from 'lucide-react';
 import { dashboardApi } from '../api/dashboard.api';
 import KpiCard from '../components/cards/KpiCard';
 import CandidateComparisonChart from '../components/charts/CandidateComparisonChart';
 import ComparacionTable from '../components/tables/ComparacionTable';
-import type { ComparacionGeneral } from '../types/dashboard.types';
+import type {
+  CandidateResult,
+  ComparacionGeneral,
+  DashboardResumen
+} from '../types/dashboard.types';
 import { formatNumber, formatPercent, getStatusClass } from '../utils/formatters';
 import '../styles/comparacion.css';
 
 export default function ComparacionPage() {
   const [comparacion, setComparacion] = useState<ComparacionGeneral | null>(null);
+  const [resumen, setResumen] = useState<DashboardResumen | null>(null);
+  const [resultadosCandidatos, setResultadosCandidatos] = useState<CandidateResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,16 +23,34 @@ export default function ComparacionPage() {
     setLoading(true);
     setError(null);
 
-    dashboardApi
-      .getComparacion()
-      .then((response) => {
-        setComparacion(response);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error('Error cargando comparación:', err);
-        setComparacion(null);
-        setError('No se pudo cargar la comparación RRV vs Oficial.');
+    Promise.allSettled([
+      dashboardApi.getComparacion(),
+      dashboardApi.getResumen(),
+      dashboardApi.getResultadosCandidatos()
+    ])
+      .then(([comparacionResult, resumenResult, candidatosResult]) => {
+        if (comparacionResult.status === 'fulfilled') {
+          setComparacion(comparacionResult.value);
+          setError(null);
+        } else {
+          console.error('Error cargando comparación:', comparacionResult.reason);
+          setComparacion(null);
+          setError('No se pudo cargar la comparación RRV vs Oficial.');
+        }
+
+        if (resumenResult.status === 'fulfilled') {
+          setResumen(resumenResult.value);
+        } else {
+          console.error('Error cargando resumen:', resumenResult.reason);
+          setResumen(null);
+        }
+
+        if (candidatosResult.status === 'fulfilled') {
+          setResultadosCandidatos(candidatosResult.value);
+        } else {
+          console.error('Error cargando resultados por candidato:', candidatosResult.reason);
+          setResultadosCandidatos([]);
+        }
       })
       .finally(() => {
         setLoading(false);
@@ -39,18 +63,36 @@ export default function ComparacionPage() {
     setLoading(true);
     setError(null);
 
-    dashboardApi
-      .getComparacion()
-      .then((response) => {
+    Promise.allSettled([
+      dashboardApi.getComparacion(),
+      dashboardApi.getResumen(),
+      dashboardApi.getResultadosCandidatos()
+    ])
+      .then(([comparacionResult, resumenResult, candidatosResult]) => {
         if (!mounted) return;
-        setComparacion(response);
-        setError(null);
-      })
-      .catch((err) => {
-        console.error('Error cargando comparación:', err);
-        if (!mounted) return;
-        setComparacion(null);
-        setError('No se pudo cargar la comparación RRV vs Oficial.');
+
+        if (comparacionResult.status === 'fulfilled') {
+          setComparacion(comparacionResult.value);
+          setError(null);
+        } else {
+          console.error('Error cargando comparación:', comparacionResult.reason);
+          setComparacion(null);
+          setError('No se pudo cargar la comparación RRV vs Oficial.');
+        }
+
+        if (resumenResult.status === 'fulfilled') {
+          setResumen(resumenResult.value);
+        } else {
+          console.error('Error cargando resumen:', resumenResult.reason);
+          setResumen(null);
+        }
+
+        if (candidatosResult.status === 'fulfilled') {
+          setResultadosCandidatos(candidatosResult.value);
+        } else {
+          console.error('Error cargando resultados por candidato:', candidatosResult.reason);
+          setResultadosCandidatos([]);
+        }
       })
       .finally(() => {
         if (mounted) {
@@ -63,15 +105,51 @@ export default function ComparacionPage() {
     };
   }, []);
 
+  const comparacionMostrada = useMemo<ComparacionGeneral | null>(() => {
+    if (!comparacion) return null;
+
+    const totalOficialResumen = resumen?.votos.oficial.totalVotos ?? 0;
+
+    const votosOficialesPorPartido = new Map(
+      resultadosCandidatos.map((item) => [item.partido, item.votosOficial])
+    );
+
+    const endpointComparacionSinOficial =
+      comparacion.totalVotosOficial === 0 && totalOficialResumen > 0;
+
+    if (!endpointComparacionSinOficial) {
+      return comparacion;
+    }
+
+    return {
+      ...comparacion,
+      totalVotosOficial: totalOficialResumen,
+      candidatos: comparacion.candidatos.map((item) => ({
+        ...item,
+        votosOficial: votosOficialesPorPartido.get(item.partido) ?? item.votosOficial
+      }))
+    };
+  }, [comparacion, resumen, resultadosCandidatos]);
+
+  const oficialUsadoComoReferencia = useMemo(() => {
+    if (!comparacion || !comparacionMostrada) return false;
+
+    return (
+      comparacion.totalVotosOficial === 0 &&
+      comparacionMostrada.totalVotosOficial > 0
+    );
+  }, [comparacion, comparacionMostrada]);
+
   if (loading) {
     return <div className="loading-card">Cargando comparación electoral...</div>;
   }
 
-  if (error || !comparacion) {
+  if (error || !comparacionMostrada) {
     return (
       <section className="page page-enter comparacion-page">
         <div className="error-card">
           <p>{error || 'No se pudo obtener la comparación.'}</p>
+
           <button
             className="button primary"
             type="button"
@@ -92,7 +170,9 @@ export default function ComparacionPage() {
             <GitCompare size={15} />
             Comparación nacional
           </span>
+
           <h2>RRV vs Oficial</h2>
+
           <p>
             Vista de lectura para identificar diferencias absolutas,
             porcentuales y estado de consistencia entre fuentes.
@@ -100,15 +180,31 @@ export default function ComparacionPage() {
           </p>
         </div>
 
-        <span className={getStatusClass(comparacion.estado)}>
-          {comparacion.estado}
+        <span className={getStatusClass(comparacionMostrada.estado)}>
+          {comparacionMostrada.estado}
         </span>
       </div>
+
+      {oficialUsadoComoReferencia && (
+        <div className="loading-card">
+          <p>
+            <strong>Datos oficiales mostrados como referencia.</strong>
+          </p>
+
+          <p>
+            El endpoint de comparación todavía devuelve Oficial en cero. Para no
+            dejar la vista vacía, se muestran los votos oficiales disponibles
+            desde los endpoints de resumen y resultados por candidato. Las
+            diferencias y estados siguen siendo los entregados por el backend de
+            comparación.
+          </p>
+        </div>
+      )}
 
       <div className="kpi-grid comparacion-kpi-grid">
         <KpiCard
           title="Total votos RRV"
-          value={formatNumber(comparacion.totalVotosRRV)}
+          value={formatNumber(comparacionMostrada.totalVotosRRV)}
           description="Total reportado por el backend RRV"
           status="POSITIVO"
           icon={<Vote />}
@@ -116,15 +212,19 @@ export default function ComparacionPage() {
 
         <KpiCard
           title="Total votos Oficial"
-          value={formatNumber(comparacion.totalVotosOficial)}
-          description="Total reportado por la API oficial"
-          status="POSITIVO"
+          value={formatNumber(comparacionMostrada.totalVotosOficial)}
+          description={
+            oficialUsadoComoReferencia
+              ? 'Total recibido desde resumen oficial'
+              : 'Total reportado por el endpoint de comparación'
+          }
+          status={comparacionMostrada.totalVotosOficial > 0 ? 'POSITIVO' : 'NEUTRO'}
           icon={<BadgeCheck />}
         />
 
         <KpiCard
           title="Diferencia total"
-          value={formatNumber(Math.abs(comparacion.diferenciaTotal))}
+          value={formatNumber(Math.abs(comparacionMostrada.diferenciaTotal))}
           description="Diferencia entregada por el flujo de comparación"
           status="NEUTRO"
           icon={<Scale />}
@@ -132,7 +232,7 @@ export default function ComparacionPage() {
 
         <KpiCard
           title="Diferencia porcentual"
-          value={formatPercent(comparacion.diferenciaPorcentualTotal, 4)}
+          value={formatPercent(comparacionMostrada.diferenciaPorcentualTotal, 4)}
           description="Porcentaje entregado por el flujo de comparación"
           status="NEUTRO"
           icon={<GitCompare />}
@@ -140,16 +240,16 @@ export default function ComparacionPage() {
 
         <KpiCard
           title="Estado de comparación"
-          value={comparacion.estado.replace(/_/g, ' ')}
+          value={comparacionMostrada.estado.replace(/_/g, ' ')}
           description="Estado recibido para la comparación RRV vs Oficial"
           status={
-            comparacion.estado === 'INCONSISTENCIA'
+            comparacionMostrada.estado === 'INCONSISTENCIA'
               ? 'ALERTA'
-              : comparacion.estado === 'DIFERENCIA_LEVE'
+              : comparacionMostrada.estado === 'DIFERENCIA_LEVE'
                 ? 'NEUTRO'
                 : 'POSITIVO'
           }
-          icon={<BadgeCheck />}
+          icon={oficialUsadoComoReferencia ? <AlertTriangle /> : <BadgeCheck />}
         />
       </div>
 
@@ -157,6 +257,7 @@ export default function ComparacionPage() {
         <div className="section-header">
           <div>
             <h3>Votos por candidato</h3>
+
             <p>
               Comparación visual de resultados RRV y Oficial recibidos desde
               backend.
@@ -164,20 +265,21 @@ export default function ComparacionPage() {
           </div>
         </div>
 
-        <CandidateComparisonChart data={comparacion.candidatos} />
+        <CandidateComparisonChart data={comparacionMostrada.candidatos} />
       </article>
 
       <article className="panel-card">
         <div className="section-header">
           <div>
             <h3>Tabla comparativa</h3>
+
             <p>
               Detalle por partido, candidato, diferencia y estado reportado.
             </p>
           </div>
         </div>
 
-        <ComparacionTable data={comparacion.candidatos} />
+        <ComparacionTable data={comparacionMostrada.candidatos} />
       </article>
     </section>
   );
