@@ -6,12 +6,14 @@ import ActasPage from './pages/ActasPage';
 import InconsistenciasPage from './pages/InconsistenciasPage';
 import GeograficoPage from './pages/GeograficoPage';
 import TecnicoPage from './pages/TecnicoPage';
+import GanadorPage from './pages/GanadorPage';
 
 export default function App() {
   return (
     <Routes>
       <Route element={<DashboardLayout />}>
         <Route path="/" element={<DashboardHome />} />
+        <Route path="/ganador" element={<GanadorPage />} />
         <Route path="/comparacion" element={<ComparacionPage />} />
         <Route path="/actas" element={<ActasPage />} />
         <Route path="/inconsistencias" element={<InconsistenciasPage />} />

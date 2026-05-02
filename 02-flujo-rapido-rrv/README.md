@@ -55,6 +55,18 @@ GET /api/rrv/health
 | `GET` | `/api/rrv/actas/{actaId}` | Detalle de un acta |
 | `POST` | `/api/rrv/actas/{actaId}/procesar-ocr` | Ejecutar OCR sobre el archivo del acta |
 | `PATCH` | `/api/rrv/actas/{actaId}/resultados-manuales` | Corregir resultados manualmente |
+| `POST` | `/api/rrv/sms` | Recibir un SMS reenviado por HTTP y guardarlo en `oep_rrv.rrv_sms` |
+
+### SMS por HTTP
+
+El backend RRV solo puede guardar SMS si recibe un HTTP POST. Que el mensaje
+llegue a la bandeja SMS del telefono no alcanza: SMS Forwarder, la app movil o
+el servidor PC deben reenviar `from/sender/phone/number` y
+`body/message/text` al endpoint.
+
+El endpoint normaliza payloads comunes, guarda siempre `rawPayload`, registra
+`receivedAt` con la fecha del backend y luego intenta parsear el resultado RRV
+sin bloquear el guardado.
 
 ### Logs
 ```

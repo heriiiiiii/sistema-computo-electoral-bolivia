@@ -64,6 +64,9 @@ EVENT_TIPO_A_SOURCE_TIPO = {
     "SMS_RECIBIDO": "SMS",
     "SMS_VALIDADO": "SMS",
     "SMS_RECHAZADO": "SMS",
+    "SMS_DUPLICADO": "SMS",
+    "SMS_CONFLICTO_MESA": "SMS",
+    "SMS_SYNC_PC_SERVER": "SMS",
 }
 
 
@@ -135,6 +138,15 @@ def acta_source_for_auto(source_tipo, usuario_id):
             endpoint="POST /api/rrv/actas/auto",
             descripcion="Acta enviada por script de carga masiva desde carpeta",
             generado_por=usuario_id or "operador-lote",
+        )
+
+    if tipo_normalizado in ["APP_MOVIL", "APP_MOVIL_PDF"]:
+        return build_source(
+            tipo="APP_MOVIL",
+            canal="APP_MOVIL_PDF",
+            endpoint="POST /api/rrv/actas/auto",
+            descripcion="Acta recibida desde app movil via servidor PC",
+            generado_por=usuario_id or "servidor-pc-app-movil",
         )
 
     return build_source(

@@ -7,6 +7,7 @@ habilitados debe tener.
 
 import csv
 import logging
+import re
 import threading
 import unicodedata
 from pathlib import Path
@@ -16,6 +17,14 @@ from app.config.settings import (
     DISTRIBUCION_TERRITORIAL_PATH,
     RECINTOS_ELECTORALES_PATH,
 )
+
+try:
+    from app.utils.ocr_normalization_utils import normalize_codigo_numerico
+except Exception:  # pragma: no cover - util siempre presente, fallback defensivo
+    normalize_codigo_numerico = None
+
+
+_FILENAME_DIGITS_RE = re.compile(r"(\d{6,20})")
 
 
 logger = logging.getLogger(__name__)
@@ -222,3 +231,197 @@ def reload_cache():
         _CACHE["errors"] = {}
 
     _ensure_loaded()
+
+
+# ---------------------------------------------------------------------------
+# Resolucion de territorio oficial (enriquecimiento geografico).
+#
+# Esta funcion NO cambia estados ni resultados de la acta. Solo intenta
+# encontrar el departamento/provincia/municipio/recinto oficial a partir del
+# codigoMesa o, en su defecto, del nombre/url del archivo (patron
+# "acta_<digitos>.pdf"). Su unico proposito es alimentar el dashboard
+# geografico de RRV cuando la ubicacion extraida del acta este vacia o no
+# coincida con la base territorial oficial.
+# ---------------------------------------------------------------------------
+
+
+def _normalize_codigo_str(value):
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    if text.isdigit():
+        return text
+
+    if normalize_codigo_numerico is not None:
+        try:
+            parsed = normalize_codigo_numerico(text)
+        except Exception:
+            parsed = None
+
+        if isinstance(parsed, dict) and parsed.get("esConfiable"):
+            normalized = parsed.get("valorNormalizado")
+            if normalized and str(normalized).isdigit():
+                return str(normalized)
+
+    digits_only = re.sub(r"\D", "", text)
+    return digits_only or None
+
+
+def _extract_codigo_from_filename(*candidates):
+    for candidate in candidates:
+        if not candidate:
+            continue
+
+        text = str(candidate)
+
+        # Strip path components first so 'storage/actas/acta_123.pdf' works.
+        try:
+            stem = Path(text).name
+        except Exception:
+            stem = text
+
+        match = _FILENAME_DIGITS_RE.search(stem)
+        if not match:
+            continue
+
+        digits = match.group(1)
+        if 8 <= len(digits) <= 20:
+            return digits
+
+    return None
+
+
+def _empty_resolution(motivo):
+    return {
+        "resuelto": False,
+        "fuente": "none",
+        "codigoMesaOficial": None,
+        "codigoRecintoOficial": None,
+        "codigoTerritorial": None,
+        "numeroMesaOficial": None,
+        "cantidadHabilitadosOficial": None,
+        "departamento": None,
+        "provincia": None,
+        "municipio": None,
+        "recinto": {"nombre": None, "direccion": None},
+        "motivoNoResuelto": motivo,
+    }
+
+
+def resolve_official_territory_for_acta(acta):
+    """Resuelve el territorio oficial de una acta para enriquecimiento geografico.
+
+    Devuelve un dict con la forma documentada en CLAUDE/PHASE-2. Nunca cambia
+    estado ni datos de la acta; el caller decide como persistirlo.
+    """
+    if not isinstance(acta, dict):
+        return _empty_resolution("SIN_CODIGO_MESA")
+
+    fuente = "codigoMesa"
+    codigo_mesa = _normalize_codigo_str(acta.get("codigoMesa"))
+
+    if not codigo_mesa:
+        archivo = acta.get("archivo") or {}
+        candidato = _extract_codigo_from_filename(
+            archivo.get("nombreOriginal"),
+            archivo.get("urlArchivo"),
+        )
+
+        if candidato:
+            codigo_mesa = _normalize_codigo_str(candidato)
+            fuente = "filename" if codigo_mesa else fuente
+
+    if not codigo_mesa:
+        # Si tampoco hay nombre/url utilizable, intentamos desde codigoRecinto
+        codigo_recinto_directo = _normalize_codigo_str(acta.get("codigoRecinto"))
+        if codigo_recinto_directo:
+            return _resolve_from_codigo_recinto(codigo_recinto_directo)
+        return _empty_resolution(
+            "CODIGO_MESA_NO_EXTRAIBLE"
+            if (acta.get("archivo") or {}).get("nombreOriginal")
+            or (acta.get("archivo") or {}).get("urlArchivo")
+            else "SIN_CODIGO_MESA"
+        )
+
+    acta_impresa = get_acta_impresa(codigo_mesa)
+
+    if not acta_impresa:
+        # Posible: el codigo se confundio en OCR. Probemos con codigoRecinto si lo hay.
+        codigo_recinto_directo = _normalize_codigo_str(acta.get("codigoRecinto"))
+        if codigo_recinto_directo:
+            via_recinto = _resolve_from_codigo_recinto(codigo_recinto_directo)
+            if via_recinto.get("resuelto"):
+                via_recinto["codigoMesaOficial"] = codigo_mesa
+                via_recinto["fuente"] = (
+                    "codigoMesa+codigoRecinto"
+                    if fuente == "codigoMesa"
+                    else f"{fuente}+codigoRecinto"
+                )
+                return via_recinto
+        return _empty_resolution("ACTA_IMPRESA_NO_EXISTE")
+
+    recinto = acta_impresa.get("recinto") or {}
+    territorio = acta_impresa.get("territorial") or {}
+
+    if not recinto:
+        return _empty_resolution("RECINTO_NO_EXISTE")
+
+    if not territorio:
+        return _empty_resolution("DISTRIBUCION_TERRITORIAL_NO_EXISTE")
+
+    return {
+        "resuelto": True,
+        "fuente": fuente,
+        "codigoMesaOficial": str(acta_impresa.get("codigoMesa") or codigo_mesa),
+        "codigoRecintoOficial": str(acta_impresa.get("codigoRecinto") or recinto.get("codigoRecinto") or ""),
+        "codigoTerritorial": str(territorio.get("codigoTerritorial") or ""),
+        "numeroMesaOficial": acta_impresa.get("nroMesa"),
+        "cantidadHabilitadosOficial": acta_impresa.get("votantesHabilitados"),
+        "departamento": territorio.get("departamento"),
+        "provincia": territorio.get("provincia"),
+        "municipio": territorio.get("municipio"),
+        "recinto": {
+            "nombre": recinto.get("recintoNombre"),
+            "direccion": recinto.get("recintoDireccion"),
+        },
+        "motivoNoResuelto": None,
+    }
+
+
+def _resolve_from_codigo_recinto(codigo_recinto):
+    _ensure_loaded()
+    recinto = _CACHE["recintos"].get(str(codigo_recinto))
+    if not recinto:
+        return _empty_resolution("RECINTO_NO_EXISTE")
+
+    codigo_territorial = recinto.get("codigoTerritorial")
+    territorio = (
+        _CACHE["territorial"].get(str(codigo_territorial))
+        if codigo_territorial
+        else None
+    )
+
+    if not territorio:
+        return _empty_resolution("DISTRIBUCION_TERRITORIAL_NO_EXISTE")
+
+    return {
+        "resuelto": True,
+        "fuente": "codigoRecinto",
+        "codigoMesaOficial": None,
+        "codigoRecintoOficial": str(recinto.get("codigoRecinto") or codigo_recinto),
+        "codigoTerritorial": str(codigo_territorial or ""),
+        "numeroMesaOficial": None,
+        "cantidadHabilitadosOficial": None,
+        "departamento": territorio.get("departamento"),
+        "provincia": territorio.get("provincia"),
+        "municipio": territorio.get("municipio"),
+        "recinto": {
+            "nombre": recinto.get("recintoNombre"),
+            "direccion": recinto.get("recintoDireccion"),
+        },
+        "motivoNoResuelto": None,
+    }

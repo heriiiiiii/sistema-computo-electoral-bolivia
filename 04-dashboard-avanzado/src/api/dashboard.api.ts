@@ -22,8 +22,11 @@ import type {
   ComparacionGeneral,
   DashboardKpi,
   DashboardResumen,
+  GanadorResponse,
+  GanadorScope,
   GeograficoItem,
   Inconsistencia,
+  MapaDepartamento,
   MetricasTecnicas
 } from '../types/dashboard.types';
 
@@ -64,6 +67,9 @@ interface RrvResumen {
   actasSospechosas: number;
   actasRechazadas: number;
   actasPendientes?: number;
+  actasNoPublicables?: number;
+  inconsistenciasAbiertas?: number;
+  incluidasDashboard?: number;
   actasDuplicadas?: number;
   actasConErrorOCR?: number;
   totalVotos: number;
@@ -171,6 +177,9 @@ function getEmptyRrvResumen(): RrvResumen {
     actasSospechosas: 0,
     actasRechazadas: 0,
     actasPendientes: 0,
+    actasNoPublicables: 0,
+    inconsistenciasAbiertas: 0,
+    incluidasDashboard: 0,
     actasDuplicadas: 0,
     actasConErrorOCR: 0,
     totalVotos: 0,
@@ -270,6 +279,9 @@ export const dashboardApi = {
         actasSospechosas: safeInt(rrv.actasSospechosas),
         actasRechazadas: safeInt(rrv.actasRechazadas),
         actasPendientes: safeInt(rrv.actasPendientes),
+        actasNoPublicables: safeInt(rrv.actasNoPublicables),
+        inconsistenciasAbiertas: safeInt(rrv.inconsistenciasAbiertas),
+        incluidasDashboard: safeInt(rrv.incluidasDashboard),
         actasDuplicadas: safeInt(rrv.actasDuplicadas),
         actasConErrorOCR: safeInt(rrv.actasConErrorOCR)
       },
@@ -291,22 +303,28 @@ export const dashboardApi = {
 
   async getComparacion(): Promise<ComparacionGeneral> {
     /*
-      Regla estricta:
-      El frontend NO cruza RRV + Oficial.
-      El frontend NO calcula diferencia.
-      El frontend NO calcula porcentaje.
-      El frontend NO decide COINCIDE / INCONSISTENCIA.
-      Solo muestra lo que devuelva el backend.
+      Usa /api/dashboard/comparacion (capa intermedia del backend oficial),
+      que cruza RRV + Oficial en el lado servidor y devuelve totales reales.
+      Si la capa intermedia no responde, cae al endpoint RRV histórico.
     */
-    const result = await safeGet<ComparacionBackendResponse>(
-      DASHBOARD_ENDPOINTS.comparacionRrv
-    );
+    const merged = await safeGet<{
+      success: boolean;
+      data: ComparacionBackendResponse;
+    }>(DASHBOARD_ENDPOINTS.comparacionDashboard);
 
-    if (!result.ok) {
-      throw new Error('No se pudo cargar comparación desde backend.');
+    let data: ComparacionBackendResponse | null = null;
+
+    if (merged.ok && merged.data?.data) {
+      data = merged.data.data;
+    } else {
+      const rrvOnly = await safeGet<ComparacionBackendResponse>(
+        DASHBOARD_ENDPOINTS.comparacionRrv
+      );
+      if (!rrvOnly.ok) {
+        throw new Error('No se pudo cargar comparación desde backend.');
+      }
+      data = rrvOnly.data;
     }
-
-    const data = result.data;
 
     return {
       totalVotosRRV: safeInt(data.totalVotosRRV),
@@ -649,5 +667,49 @@ export const dashboardApi = {
       : [];
 
     return [...rrvActas, ...ofiActas];
+  },
+
+  // ── Capa intermedia: ganador por alcance ──────────────────────
+
+  async getGanador(scope: GanadorScope, codigo?: string): Promise<GanadorResponse> {
+    const url =
+      scope === 'nacional'        ? DASHBOARD_ENDPOINTS.ganadorNacional :
+      scope === 'mesa'            ? DASHBOARD_ENDPOINTS.ganadorMesa(codigo!) :
+      scope === 'recinto'         ? DASHBOARD_ENDPOINTS.ganadorRecinto(codigo!) :
+      scope === 'municipio'       ? DASHBOARD_ENDPOINTS.ganadorMunicipio(codigo!) :
+                                    DASHBOARD_ENDPOINTS.ganadorDepartamento(codigo!);
+
+    if (scope !== 'nacional' && !codigo) {
+      throw new Error(`Se requiere codigo para scope=${scope}`);
+    }
+
+    const response = await client.get<{
+      success: boolean;
+      message?: string;
+      codigoError?: string;
+      data: GanadorResponse | null;
+    }>(url, { validateStatus: () => true });
+
+    if (!response.data?.success) {
+      const codErr = response.data?.codigoError || 'GANADOR_ERROR';
+      const msg = response.data?.message || 'No se pudo obtener el ganador';
+      const err = new Error(msg) as Error & { codigoError?: string };
+      err.codigoError = codErr;
+      throw err;
+    }
+
+    return response.data.data!;
+  },
+
+  // ── Capa intermedia: mapa de departamentos ────────────────────
+
+  async getMapaDepartamentos(): Promise<MapaDepartamento[]> {
+    const r = await safeGet<{
+      success: boolean;
+      data: { departamentos: MapaDepartamento[] };
+    }>(DASHBOARD_ENDPOINTS.mapaDepartamentos);
+
+    if (!r.ok) return [];
+    return r.data?.data?.departamentos || [];
   }
 };

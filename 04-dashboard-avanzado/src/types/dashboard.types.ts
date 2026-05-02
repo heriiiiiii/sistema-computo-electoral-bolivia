@@ -89,7 +89,11 @@ export interface DashboardResumen {
     actasSospechosas: number;
     actasRechazadas: number;
 
-    actasPendientes?: number;
+    actasPendientes: number;
+    actasNoPublicables: number;
+    inconsistenciasAbiertas: number;
+    incluidasDashboard: number;
+
     actasDuplicadas?: number;
     actasConErrorOCR?: number;
   };
@@ -267,4 +271,45 @@ export interface ActasPorHora {
 export interface FilterOption {
   label: string;
   value: string;
+}
+
+// ── Capa intermedia /api/dashboard/* ──────────────────────────
+
+export type GanadorScope = 'nacional' | 'departamento' | 'municipio' | 'recinto' | 'mesa';
+
+export interface VotosPartidoOficial {
+  codigo: string;
+  nombre: string;
+  votos: number;
+  color: string;
+}
+
+export interface GanadorInfo {
+  partido: string | null;
+  nombre: string | null;
+  votos: number;
+  totalVotosScope: number;
+  porcentaje: number;
+  margenVotos: number;
+  margenPorcentual: number;
+  empate: boolean;
+}
+
+export interface GanadorResponse {
+  scope: GanadorScope;
+  codigo?: string;
+  nombre?: string;
+  ganador: GanadorInfo;
+  totalVotos: number;
+  actasComputadas: number;
+  partidos: VotosPartidoOficial[];
+}
+
+export interface MapaDepartamento {
+  codigo: string;
+  nombre: string;
+  actasComputadas: number;
+  totalVotos: number;
+  partidos: VotosPartidoOficial[];
+  ganador: GanadorInfo;
 }

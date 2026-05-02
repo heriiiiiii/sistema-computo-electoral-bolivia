@@ -200,12 +200,14 @@ def receive_sms_rrv(body: Dict[str, Any] = Body(...)):
         result = acta_service.receive_sms(body)
 
         if not result.get("success"):
-            status_code = 422
-
-            if result.get("codigoError") in ["SMS_DUPLICADO", "SMS_YA_REGISTRADO"]:
-                status_code = 409
-
-            return JSONResponse(status_code=status_code, content=result)
+            return JSONResponse(
+                status_code=500,
+                content={
+                    "success": False,
+                    "message": "Could not save SMS",
+                    "error": result.get("error") or result.get("message") or "Unknown error",
+                },
+            )
 
         return result
 
@@ -225,9 +227,8 @@ def receive_sms_rrv(body: Dict[str, Any] = Body(...)):
             status_code=500,
             content={
                 "success": False,
-                "message": "Error interno al recibir SMS RRV",
-                "codigoError": "ERROR_INTERNO_SMS_RRV",
-                "detalle": str(error)
+                "message": "Could not save SMS",
+                "error": str(error)
             }
         )
 
@@ -359,6 +360,9 @@ def get_rrv_resumen():
             "actasPendientes": 0,
             "actasDuplicadas": 0,
             "actasConErrorOCR": 0,
+            "actasNoPublicables": 0,
+            "inconsistenciasAbiertas": 0,
+            "incluidasDashboard": 0,
             "totalVotos": 0,
             "votosValidos": 0,
             "votosBlancos": 0,
@@ -371,34 +375,36 @@ def get_rrv_resumen():
             if not isinstance(acta, dict):
                 continue
 
+            # actasRecibidas == actasProcesadas: cada acta almacenada ya entro
+            # al pipeline RRV. ocr.procesado refleja solo el subpaso OCR y no
+            # representa todo el procesamiento.
             resumen["actasRecibidas"] += 1
+            resumen["actasProcesadas"] += 1
 
             estado = acta.get("estado") or "SIN_ESTADO"
             validacion = acta.get("validacion") or {}
             ocr = acta.get("ocr") or {}
             ubicacion = acta.get("ubicacion") or {}
+            territorio_oficial = acta.get("territorioOficial") or {}
             resultados_root = acta.get("resultados") or {}
             resultados = resultados_root.get("presidente") or {}
 
-            if ocr.get("procesado") is True:
-                resumen["actasProcesadas"] += 1
-
-            if estado == "VALIDADA":
+            if estado in ["VALIDADA", "PUBLICADA"]:
                 resumen["actasValidadas"] += 1
+                resumen["incluidasDashboard"] += 1
 
-            if (
-                estado == "SOSPECHOSA"
-                or validacion.get("esSospechosa") is True
-                or validacion.get("requiereRevisionManual") is True
-                or validacion.get("esDuplicada") is True
-            ):
+            if estado == "SOSPECHOSA":
                 resumen["actasSospechosas"] += 1
 
             if estado == "RECHAZADA":
                 resumen["actasRechazadas"] += 1
 
-            if estado in ["RECIBIDA", "PROCESANDO", "PENDIENTE_REVISION"]:
+            if estado == "PENDIENTE_REVISION":
                 resumen["actasPendientes"] += 1
+
+            if estado in ["SOSPECHOSA", "PENDIENTE_REVISION", "RECHAZADA"]:
+                resumen["actasNoPublicables"] += 1
+                resumen["inconsistenciasAbiertas"] += 1
 
             if validacion.get("esDuplicada") is True:
                 resumen["actasDuplicadas"] += 1
@@ -421,8 +427,22 @@ def get_rrv_resumen():
                 resumen["votosBlancos"] += int(resultados.get("votosBlancos") or 0)
                 resumen["votosNulos"] += int(resultados.get("votosNulos") or 0)
 
-            departamento = ubicacion.get("departamento") or "SIN_DEPARTAMENTO"
-            municipio = ubicacion.get("municipio") or "SIN_MUNICIPIO"
+            # Prioridad geografica: territorioOficial -> ubicacion -> SIN_*.
+            # Coincide con la regla aplicada en /api/rrv/dashboard/geografico.
+            if territorio_oficial.get("resuelto"):
+                departamento = (
+                    territorio_oficial.get("departamento")
+                    or ubicacion.get("departamento")
+                    or "SIN_DEPARTAMENTO"
+                )
+                municipio = (
+                    territorio_oficial.get("municipio")
+                    or ubicacion.get("municipio")
+                    or "SIN_MUNICIPIO"
+                )
+            else:
+                departamento = ubicacion.get("departamento") or "SIN_DEPARTAMENTO"
+                municipio = ubicacion.get("municipio") or "SIN_MUNICIPIO"
 
             resumen["actasPorDepartamento"][departamento] = (
                 resumen["actasPorDepartamento"].get(departamento, 0) + 1

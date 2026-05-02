@@ -39,5 +39,20 @@ export const DASHBOARD_ENDPOINTS = {
   actasOficial: '/api/oficial/actas',
   validacionesOficial: '/api/oficial/validaciones',
   auditoriaOficial: '/api/oficial/auditoria',
-  importacionesOficial: '/api/oficial/importaciones'
+  importacionesOficial: '/api/oficial/importaciones',
+
+  // ── Capa intermedia (RRV + Oficial unificados) ────────────────
+  // Provista por el backend oficial bajo /api/dashboard/*.
+  // Une datos de PostgreSQL (oficial) y FastAPI (RRV) del lado servidor.
+  resumenNacional: '/api/dashboard/resumen-nacional',
+  resultadosScope: '/api/dashboard/resultados',
+  ganadorNacional: '/api/dashboard/ganador/nacional',
+  ganadorMesa: (codigo: string) => `/api/dashboard/ganador/mesa/${encodeURIComponent(codigo)}`,
+  ganadorRecinto: (codigo: string) => `/api/dashboard/ganador/recinto/${encodeURIComponent(codigo)}`,
+  ganadorMunicipio: (codigo: string) => `/api/dashboard/ganador/municipio/${encodeURIComponent(codigo)}`,
+  ganadorDepartamento: (codigo: string) => `/api/dashboard/ganador/departamento/${encodeURIComponent(codigo)}`,
+  comparacionDashboard: '/api/dashboard/comparacion',
+  inconsistenciasDashboard: '/api/dashboard/inconsistencias',
+  healthDashboard: '/api/dashboard/health',
+  mapaDepartamentos: '/api/dashboard/mapa/departamentos'
 } as const;

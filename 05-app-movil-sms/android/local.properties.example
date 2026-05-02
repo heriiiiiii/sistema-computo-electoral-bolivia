@@ -1,0 +1,9 @@
+# Renombrar este archivo a local.properties y ajustar las rutas.
+# Este archivo NO se sube al repositorio (está en .gitignore).
+sdk.dir=C\:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\sdk
+flutter.sdk=C\:\\src\\flutter
+flutter.versionName=1.0.0
+flutter.versionCode=1
+flutter.minSdkVersion=21
+flutter.compileSdkVersion=34
+flutter.targetSdkVersion=34

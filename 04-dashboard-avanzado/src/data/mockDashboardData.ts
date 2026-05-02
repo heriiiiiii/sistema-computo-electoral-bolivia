@@ -16,10 +16,14 @@ import type {
 export const mockResumen: DashboardResumen = {
   rrv: {
     actasRecibidas: 35120,
-    actasProcesadas: 33940,
+    actasProcesadas: 35120,
     actasValidadas: 32680,
     actasSospechosas: 410,
-    actasRechazadas: 95
+    actasRechazadas: 95,
+    actasPendientes: 1935,
+    actasNoPublicables: 2440,
+    inconsistenciasAbiertas: 2440,
+    incluidasDashboard: 32680
   },
   oficial: {
     actasImportadas: 34890,

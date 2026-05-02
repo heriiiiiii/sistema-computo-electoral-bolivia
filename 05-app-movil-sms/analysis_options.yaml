@@ -1,0 +1,16 @@
+include: package:flutter_lints/flutter.yaml
+
+linter:
+  rules:
+    # Preferir const donde sea posible (mejora rendimiento de rebuild)
+    prefer_const_constructors: true
+    prefer_const_literals_to_create_immutables: true
+    # Evitar prints en código de producción
+    avoid_print: true
+    # Tipos explícitos en variables públicas
+    type_annotate_public_apis: false
+
+analyzer:
+  errors:
+    # Tratar warnings de deprecated como info, no como error
+    deprecated_member_use: info

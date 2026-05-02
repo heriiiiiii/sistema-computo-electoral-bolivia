@@ -4,7 +4,8 @@ from copy import deepcopy
 from uuid import uuid4
 import re
 
-from app.config.settings import UPLOAD_DIR
+from app.config.settings import MONGO_DB_NAME, UPLOAD_DIR
+from app.constants.rrv_constants import COLECCIONES_RRV
 from app.repositories.rrv_repository import RRVRepository
 from app.services.event_service import EventService
 from app.services.log_service import LogService
@@ -13,7 +14,11 @@ from app.services.revision_storage_service import (
     save_acta_to_revision,
 )
 from app.services.csv_observation_service import get_csv_validation_metadata
-from app.services.actas_impresas_service import get_acta_impresa
+from app.services.actas_impresas_service import (
+    get_acta_impresa,
+    get_actas_impresas_status,
+    resolve_official_territory_for_acta,
+)
 from app.utils.hash_utils import calculate_sha256
 from app.utils.mongo_utils import serialize_mongo_document, serialize_mongo_documents
 from app.validators.file_validator import validate_uploaded_file
@@ -198,6 +203,99 @@ class ActaService:
 
         acta["codigoRecinto"] = str(codigo_recinto)
         return True
+
+    def _enrich_official_territory(self, acta):
+        """Resuelve territorio oficial y lo persiste en `territorioOficial`.
+
+        - No cambia estado ni resultados.
+        - Solo rellena codigoMesa/codigoRecinto/ubicacion cuando estan vacios.
+        - Si la ubicacion existente no es vacia, NO la sobrescribe (la mantiene
+          junto con `territorioOficial` para que el dashboard pueda agrupar).
+        """
+        if not isinstance(acta, dict):
+            return None
+
+        try:
+            resolution = resolve_official_territory_for_acta(acta)
+        except Exception as error:
+            self._safe_register_log(
+                tipo="SISTEMA",
+                severidad="WARNING",
+                mensaje="No se pudo resolver territorio oficial",
+                detalle=str(error),
+                acta_id=acta.get("actaId"),
+                codigo_mesa=acta.get("codigoMesa"),
+                datos_referencia={"fase": "TERRITORIO_OFICIAL_LOOKUP"},
+            )
+            return None
+
+        if not isinstance(resolution, dict):
+            return None
+
+        if not resolution.get("resuelto"):
+            acta["territorioOficial"] = {
+                "resuelto": False,
+                "fuente": resolution.get("fuente") or "none",
+                "motivoNoResuelto": resolution.get("motivoNoResuelto"),
+            }
+            return acta["territorioOficial"]
+
+        territorio = {
+            "resuelto": True,
+            "fuente": resolution.get("fuente"),
+            "codigoMesa": resolution.get("codigoMesaOficial"),
+            "codigoRecinto": resolution.get("codigoRecintoOficial"),
+            "codigoTerritorial": resolution.get("codigoTerritorial"),
+            "departamento": resolution.get("departamento"),
+            "provincia": resolution.get("provincia"),
+            "municipio": resolution.get("municipio"),
+            "recinto": {
+                "nombre": (resolution.get("recinto") or {}).get("nombre"),
+                "direccion": (resolution.get("recinto") or {}).get("direccion"),
+            },
+        }
+
+        acta["territorioOficial"] = territorio
+
+        # Recuperar codigoMesa SOLO si vino del filename (no contradice OCR).
+        if (
+            not acta.get("codigoMesa")
+            and resolution.get("codigoMesaOficial")
+            and resolution.get("fuente") == "filename"
+        ):
+            acta["codigoMesa"] = resolution.get("codigoMesaOficial")
+
+        # Rellenar codigoRecinto si esta vacio.
+        if not acta.get("codigoRecinto") and resolution.get("codigoRecintoOficial"):
+            acta["codigoRecinto"] = resolution.get("codigoRecintoOficial")
+
+        # Rellenar ubicacion SOLO cuando este completamente vacia. Nunca
+        # sobrescribir una ubicacion no vacia, aunque haya inconsistencias:
+        # esas siguen su flujo de validacion (PROVINCIA_NO_COINCIDE, etc).
+        ubicacion = acta.get("ubicacion") or {}
+        ubicacion_recinto = ubicacion.get("recinto") or {}
+        ubicacion_vacia = not any(
+            (
+                ubicacion.get("departamento"),
+                ubicacion.get("provincia"),
+                ubicacion.get("municipio"),
+                ubicacion_recinto.get("nombre"),
+                ubicacion_recinto.get("direccion"),
+            )
+        )
+
+        if ubicacion_vacia:
+            acta["ubicacion"] = {
+                "departamento": territorio.get("departamento"),
+                "provincia": territorio.get("provincia"),
+                "municipio": territorio.get("municipio"),
+                "recinto": {
+                    "nombre": territorio["recinto"].get("nombre"),
+                    "direccion": territorio["recinto"].get("direccion"),
+                },
+            }
+
+        return territorio
 
     def _merge_unique_errors(self, *error_lists):
         """Merge sin duplicados.
@@ -411,6 +509,10 @@ class ActaService:
             if draft_acta.get(key) is not None:
                 set_data[key] = draft_acta.get(key)
 
+        # Persist territorial enrichment when present (does NOT change state).
+        if draft_acta.get("territorioOficial") is not None:
+            set_data["territorioOficial"] = draft_acta.get("territorioOficial")
+
         datos_acta = draft_acta.get("datosActa") or {}
         for key in [
             "cantidadHabilitados",
@@ -517,6 +619,40 @@ class ActaService:
                 },
             )
 
+    @staticmethod
+    def _merge_ubicacion_with_territory(ubicacion, territorio_oficial):
+        """Devuelve una ubicacion donde los campos vacios caen a territorioOficial.
+
+        Nunca sobrescribe valores no vacios de la ubicacion extraida; eso
+        seguiria activando inconsistencias OEP. Solo rellena huecos para que el
+        dashboard pueda agrupar.
+        """
+        ubicacion = ubicacion or {}
+        territorio = territorio_oficial or {}
+        recinto_acta = ubicacion.get("recinto") or {}
+        recinto_oficial = territorio.get("recinto") or {}
+
+        if not territorio.get("resuelto"):
+            return {
+                "departamento": ubicacion.get("departamento"),
+                "provincia": ubicacion.get("provincia"),
+                "municipio": ubicacion.get("municipio"),
+                "recinto": {
+                    "nombre": recinto_acta.get("nombre"),
+                    "direccion": recinto_acta.get("direccion"),
+                },
+            }
+
+        return {
+            "departamento": ubicacion.get("departamento") or territorio.get("departamento"),
+            "provincia": ubicacion.get("provincia") or territorio.get("provincia"),
+            "municipio": ubicacion.get("municipio") or territorio.get("municipio"),
+            "recinto": {
+                "nombre": recinto_acta.get("nombre") or recinto_oficial.get("nombre"),
+                "direccion": recinto_acta.get("direccion") or recinto_oficial.get("direccion"),
+            },
+        }
+
     def _build_resultado_document(self, acta):
         now = datetime.now(timezone.utc)
         acta = acta or {}
@@ -536,6 +672,15 @@ class ActaService:
 
         archivo = acta.get("archivo") or {}
 
+        # Enriquecimiento geografico: usa la ubicacion extraida si existe; si
+        # esta vacia, cae a territorioOficial. Nunca sobrescribe ubicacion no
+        # vacia (la posible inconsistencia ya quedo registrada en validacion).
+        ubicacion_acta = acta.get("ubicacion") or {}
+        territorio_oficial = acta.get("territorioOficial") or {}
+        ubicacion_doc = self._merge_ubicacion_with_territory(
+            ubicacion_acta, territorio_oficial
+        )
+
         return {
             "resultadoId": f"RES-{acta_id}",
             "actaId": acta_id,
@@ -546,7 +691,8 @@ class ActaService:
             "incluidoEnDashboard": incluido,
             "fuente": acta.get("fuente"),
             "source": acta.get("source") or {},
-            "ubicacion": acta.get("ubicacion") or {},
+            "ubicacion": ubicacion_doc,
+            "territorioOficial": territorio_oficial or None,
             "archivo": {
                 "nombreOriginal": archivo.get("nombreOriginal"),
                 "hashArchivo": archivo.get("hashArchivo"),
@@ -819,6 +965,7 @@ class ActaService:
         }
 
         self._complete_codigo_recinto_from_actas_impresas(acta_data)
+        self._enrich_official_territory(acta_data)
 
         insert_result = self._safe_insert_acta(
             acta_data=acta_data,
@@ -1625,12 +1772,14 @@ class ActaService:
 
             texto_extraido = metadata.get("textoExtraido")
 
+        tipo_fuente_auto = (source_tipo or "").strip().upper()
+
         return {
             "actaId": acta_id,
             "codigoMesa": codigo_mesa,
             "numeroMesa": numero_mesa,
             "codigoRecinto": None,
-            "fuente": "CARGA_WEB",
+            "fuente": "APP_MOVIL" if tipo_fuente_auto in ["APP_MOVIL", "APP_MOVIL_PDF"] else "CARGA_WEB",
             "source": acta_source_for_auto(source_tipo, usuario_id),
             "estado": estado,
             "ubicacion": ubicacion,
@@ -2332,6 +2481,7 @@ class ActaService:
 
         draft_acta = deepcopy(acta)
         self._complete_codigo_recinto_from_actas_impresas(draft_acta)
+        self._enrich_official_territory(draft_acta)
         inconsistencias = self.calcular_inconsistencias_acta(draft_acta)
 
         es_duplicada = acta.get("validacion", {}).get("esDuplicada", False)
@@ -2473,162 +2623,518 @@ class ActaService:
         }
 
     def parse_sms_content(self, contenido_original):
-            if not contenido_original or not isinstance(contenido_original, str):
-                return None
+        if not contenido_original or not isinstance(contenido_original, str):
+            return None
 
-            parsed = {}
+        parsed = {}
 
-            partes = contenido_original.split(";")
-
-            for parte in partes:
-                if ":" not in parte:
-                    continue
-
-                key, value = parte.split(":", 1)
-                parsed[key.strip().upper()] = value.strip()
-
-            return parsed
-
-    def receive_sms(self, body):
-        now = datetime.now(timezone.utc)
-
-        sms_id = body.get("smsId")
-        numero_origen = body.get("numeroOrigen")
-        contenido_original = body.get("contenidoOriginal")
-        fecha_recepcion = body.get("fechaRecepcion")
-
-        errores = []
-
-        if not sms_id:
-            errores.append("SMS_ID_REQUERIDO")
-
-        if not numero_origen:
-            errores.append("NUMERO_ORIGEN_REQUERIDO")
-
-        if not contenido_original:
-            errores.append("CONTENIDO_SMS_REQUERIDO")
-
-        parsed = self.parse_sms_content(contenido_original)
-
-        if parsed is None:
-            errores.append("SMS_FORMATO_INVALIDO")
-            parsed = {}
-
-        campos_requeridos = [
-            "MESA", "RECINTO", "P1", "P2", "P3", "P4", "BLANCOS", "NULOS", "TOKEN"
-        ]
-
-        for campo in campos_requeridos:
-            if campo not in parsed:
-                errores.append(f"SMS_CAMPO_FALTANTE_{campo}")
-
-        codigo_mesa = parsed.get("MESA")
-        codigo_recinto = parsed.get("RECINTO")
-
-        sms_duplicado = False
-        mesa_sms_duplicada = False
-
-        if sms_id:
-            sms_duplicado = self.repository.find_sms_by_id(sms_id) is not None
-
-        if codigo_mesa:
-            mesa_sms_duplicada = len(self.repository.find_sms_by_codigo_mesa(codigo_mesa)) > 0
-
-        if sms_duplicado:
-            errores.append("SMS_DUPLICADO")
-
-            self.event_service.register_event(
-                tipo="DUPLICADO_DETECTADO",
-                acta_id=None,
-                codigo_mesa=codigo_mesa,
-                mensaje="SMS duplicado detectado por smsId",
-                datos_referencia={
-                    "smsId": sms_id,
-                    "numeroOrigen": numero_origen,
-                    "errores": errores
-                }
-            )
-
-            self.log_service.register_log(
-                tipo="DUPLICADO",
-                severidad="WARNING",
-                mensaje="SMS duplicado detectado",
-                detalle=", ".join(errores),
-                acta_id=None,
-                codigo_mesa=codigo_mesa,
-                datos_referencia={
-                    "smsId": sms_id,
-                    "numeroOrigen": numero_origen,
-                    "contenidoOriginal": contenido_original,
-                    "errores": errores
-                }
-            )
-
-            return {
-                "success": False,
-                "smsId": sms_id,
-                "estado": "DUPLICADO",
-                "codigoError": "SMS_DUPLICADO",
-                "message": "SMS duplicado. Ya existe un SMS registrado con el mismo smsId.",
-                "errores": errores,
-                "datosParseados": {}
-            }
-
-        tokens_validos_demo = ["ABC123", "TOKEN-DEMO"]
-        numeros_validos_demo = ["+59170000000", "+59170111111"]
-
-        if parsed.get("TOKEN") not in tokens_validos_demo:
-            errores.append("SMS_TOKEN_INVALIDO")
-
-        if numero_origen not in numeros_validos_demo:
-            errores.append("SMS_NUMERO_NO_AUTORIZADO")
-
-        valores_numericos = {}
-
-        for campo in ["P1", "P2", "P3", "P4", "BLANCOS", "NULOS"]:
-            valor = parsed.get(campo)
-
-            if valor is None:
+        for parte in re.split(r"[;\r\n]+", contenido_original):
+            if ":" not in parte:
                 continue
 
-            if not re.fullmatch(r"\d+", valor):
-                errores.append(f"SMS_VALOR_NO_NUMERICO_{campo}")
+            key, value = parte.split(":", 1)
+            key_normalized = key.strip().upper()
+            if key_normalized:
+                parsed[key_normalized] = value.strip()
+
+        # SMS Forwarder apps often send compact text such as:
+        # "RRV MESA 1010200001001 P1 10 P2 20 ...".
+        # Keep the legacy key:value parser above, then fill missing fields from
+        # whitespace-separated labels.
+        for key in ["MESA", "RECINTO", "P1", "P2", "P3", "P4", "BLANCOS", "NULOS", "TOKEN"]:
+            if key in parsed:
                 continue
 
-            valores_numericos[campo] = int(valor)
+            match = re.search(
+                rf"(?<!\w){re.escape(key)}(?!\w)\s*:?\s*([^\s;,:]+)",
+                contenido_original,
+                flags=re.IGNORECASE,
+            )
 
-        if mesa_sms_duplicada:
-            errores.append("SMS_MESA_DUPLICADA")
+            if match:
+                parsed[key] = match.group(1).strip()
 
-        if errores:
-            estado = "INVALIDO"
-        else:
-            estado = "VALIDO"
+        return parsed or None
 
-        votos_validos = (
-            valores_numericos.get("P1", 0)
-            + valores_numericos.get("P2", 0)
-            + valores_numericos.get("P3", 0)
-            + valores_numericos.get("P4", 0)
+    def _normalize_sms_phone(self, numero):
+        text = re.sub(r"\s+", "", str(numero or "").strip())
+
+        if not text:
+            return None
+
+        if text.startswith("+"):
+            return text
+
+        if text.startswith("591"):
+            return f"+{text}"
+
+        if text.startswith("0"):
+            text = text[1:]
+
+        return f"+591{text}"
+
+    def _sms_bool(self, value):
+        if isinstance(value, bool):
+            return value
+        return str(value or "").strip().lower() in ["1", "true", "yes", "si"]
+
+    def _first_present_field(self, body, keys):
+        if not isinstance(body, dict):
+            return None
+
+        for key in keys:
+            if key in body and body.get(key) not in [None, ""]:
+                return body.get(key)
+
+        return None
+
+    def _normalize_sms_payload(self, body):
+        raw_payload = deepcopy(body) if isinstance(body, dict) else {"value": body}
+        payload = body if isinstance(body, dict) else {}
+        datos_body = payload.get("datos") if isinstance(payload.get("datos"), dict) else {}
+
+        sender_raw = self._first_present_field(payload, [
+            "numeroOrigen",
+            "telefonoRemitente",
+            "from",
+            "From",
+            "sender",
+            "Sender",
+            "phone",
+            "Phone",
+            "number",
+            "Number",
+            "msisdn",
+            "originator",
+        ])
+        message_raw = self._first_present_field(payload, [
+            "contenidoOriginal",
+            "mensaje",
+            "message",
+            "Message",
+            "body",
+            "Body",
+            "text",
+            "Text",
+            "sms",
+            "Sms",
+            "smsText",
+            "messageBody",
+        ])
+
+        message = str(message_raw).strip() if message_raw not in [None, ""] else None
+        if not message:
+            message = self._build_sms_content_from_datos(datos_body)
+
+        timestamp_raw = self._first_present_field(payload, [
+            "fechaRecepcion",
+            "timestamp",
+            "Timestamp",
+            "timestampMovil",
+            "time",
+            "date",
+            "sentAt",
+            "receivedAt",
+        ])
+
+        sender_normalized = self._normalize_sms_phone(sender_raw)
+
+        return {
+            "payload": payload,
+            "rawPayload": raw_payload,
+            "datos": datos_body,
+            "senderRaw": sender_raw,
+            "sender": sender_normalized or (str(sender_raw).strip() if sender_raw else None),
+            "message": message,
+            "timestamp": timestamp_raw,
+        }
+
+    def _sms_content_signature(self, parsed):
+        if not parsed:
+            return ""
+
+        keys = ["MESA", "RECINTO", "P1", "P2", "P3", "P4", "BLANCOS", "NULOS", "TOKEN"]
+        return ";".join(
+            f"{key}:{str(parsed.get(key, '')).strip()}"
+            for key in keys
+            if key in parsed
         )
 
-        total_votos = (
-            votos_validos
-            + valores_numericos.get("BLANCOS", 0)
-            + valores_numericos.get("NULOS", 0)
+    def _sms_vote_signature_from_values(self, valores):
+        return {
+            "P1": valores.get("P1"),
+            "P2": valores.get("P2"),
+            "P3": valores.get("P3"),
+            "P4": valores.get("P4"),
+            "BLANCOS": valores.get("BLANCOS"),
+            "NULOS": valores.get("NULOS"),
+        }
+
+    def _sms_vote_signature_from_document(self, sms_document):
+        datos = (sms_document or {}).get("datosParseados") or {}
+        return {
+            "P1": datos.get("p1"),
+            "P2": datos.get("p2"),
+            "P3": datos.get("p3"),
+            "P4": datos.get("p4"),
+            "BLANCOS": datos.get("votosBlancos"),
+            "NULOS": datos.get("votosNulos"),
+        }
+
+    def _sms_source(self, numero_origen, fuente=None, canal=None, modulo_origen=None):
+        source = sms_source(numero_origen)
+
+        if fuente:
+            source["tipo"] = str(fuente).strip().upper()
+
+        if canal:
+            source["canal"] = str(canal).strip().upper()
+
+        if modulo_origen:
+            source["moduloOrigen"] = str(modulo_origen).strip()
+
+        return source
+
+    def _build_sms_content_from_datos(self, datos):
+        if not isinstance(datos, dict):
+            return None
+
+        votos = datos.get("votos") or {}
+        codigo_mesa = datos.get("codigoMesa") or datos.get("mesa")
+        codigo_recinto = datos.get("codigoRecinto") or datos.get("recinto")
+
+        required_values = [
+            codigo_mesa,
+            codigo_recinto,
+            votos.get("P1"),
+            votos.get("P2"),
+            votos.get("P3"),
+            votos.get("P4"),
+            votos.get("BLANCOS"),
+            votos.get("NULOS"),
+        ]
+
+        if any(value is None for value in required_values):
+            return None
+
+        return (
+            f"MESA:{codigo_mesa};RECINTO:{codigo_recinto};"
+            f"P1:{votos.get('P1')};P2:{votos.get('P2')};"
+            f"P3:{votos.get('P3')};P4:{votos.get('P4')};"
+            f"BLANCOS:{votos.get('BLANCOS')};NULOS:{votos.get('NULOS')}"
+        )
+
+    def receive_sms(self, body):
+        endpoint = "POST /api/rrv/sms"
+        collection_name = COLECCIONES_RRV["sms"]
+        now = datetime.now(timezone.utc)
+
+        normalized = self._normalize_sms_payload(body)
+        payload = normalized["payload"]
+        raw_payload = normalized["rawPayload"]
+        datos_body = normalized["datos"]
+        sms_id = payload.get("smsId") or f"SMS-RRV-{uuid4().hex[:12].upper()}"
+        numero_origen = normalized["sender"]
+        contenido_original = normalized["message"]
+        timestamp_cliente = normalized["timestamp"]
+        fuente = payload.get("fuente")
+        canal = payload.get("canal")
+        modulo_origen = payload.get("moduloOrigen")
+        autorizado_servidor_pc = self._sms_bool(payload.get("autorizadoServidorPc"))
+
+        print(f"[RRV SMS] Request received endpoint={endpoint}")
+        print(f"[RRV SMS] Payload received: {raw_payload}")
+        print(f"[RRV SMS] Mongo target database={MONGO_DB_NAME} collection={collection_name}")
+
+        es_app_movil_sms = (
+            autorizado_servidor_pc
+            or str(fuente or "").strip().upper() == "APP_MOVIL_SMS"
+            or str(canal or "").strip().upper() == "SMS_APP_MOVIL"
         )
 
         sms_document = {
             "smsId": sms_id,
-            "numeroOrigen": numero_origen,
-            "contenidoOriginal": contenido_original,
-            "fechaRecepcion": fecha_recepcion,
-            "estado": estado,
-            "codigoMesa": codigo_mesa,
-            "codigoRecinto": codigo_recinto,
-            "source": sms_source(numero_origen),
-            "token": parsed.get("TOKEN"),
-            "datosParseados": {
+            "origen": "SMS",
+            "sender": numero_origen,
+            "message": contenido_original or "",
+            "receivedAt": now,
+            "status": "RECIBIDO",
+            "processed": False,
+            "rawPayload": raw_payload,
+            "numeroOrigen": numero_origen or "",
+            "telefonoRemitente": payload.get("telefonoRemitente") or numero_origen or "",
+            "contenidoOriginal": contenido_original or "",
+            "contenidoNormalizado": "",
+            "mensaje": contenido_original or "",
+            "fechaRecepcion": now,
+            "fechaRecepcionCliente": timestamp_cliente,
+            "timestampMovil": payload.get("timestampMovil") or timestamp_cliente,
+            "autorizadoServidorPc": autorizado_servidor_pc,
+            "fuente": fuente or ("APP_MOVIL_SMS" if es_app_movil_sms else "SMS"),
+            "canal": canal or ("SMS_APP_MOVIL" if es_app_movil_sms else "RRV_SMS"),
+            "moduloOrigen": modulo_origen,
+            "estado": "RECIBIDO",
+            "estadoSms": "RECIBIDO",
+            "codigoMesa": None,
+            "codigoRecinto": None,
+            "source": self._sms_source(numero_origen, fuente, canal, modulo_origen),
+            "token": None,
+            "duplicado": False,
+            "duplicadoDeSmsId": None,
+            "conflicto": False,
+            "smsConflictivos": [],
+            "datos": datos_body,
+            "datosParseados": {},
+            "datosInterpretados": None,
+            "resultados": {},
+            "territorioOficial": {},
+            "seguridad": {
+                "numeroInformado": numero_origen is not None,
+                "formatoValido": False,
+                "numeroAutorizado": autorizado_servidor_pc,
+            },
+            "validacion": {
+                "esValido": False,
+                "esRechazado": False,
+                "esInvalido": False,
+                "esDuplicado": False,
+                "esSospechoso": False,
+                "errores": [],
+                "fechaValidacion": None,
+            },
+            "createdAt": now,
+            "updatedAt": now,
+        }
+
+        try:
+            inserted_id = self.repository.insert_sms(sms_document)
+        except Exception as error:
+            print(f"[RRV SMS] Mongo write error database={MONGO_DB_NAME} collection={collection_name}: {error}")
+            self._safe_register_log(
+                tipo="MONGO_WRITE_ERROR",
+                severidad="CRITICAL",
+                mensaje="No se pudo guardar SMS en MongoDB",
+                detalle=str(error),
+                datos_referencia={
+                    "endpoint": endpoint,
+                    "database": MONGO_DB_NAME,
+                    "collection": collection_name,
+                    "payload": raw_payload,
+                },
+            )
+
+            return {
+                "success": False,
+                "message": "Could not save SMS",
+                "error": str(error),
+                "codigoError": "MONGO_WRITE_ERROR_SMS",
+            }
+
+        print(
+            f"[RRV SMS] Saved document smsId={sms_id} insertedId={inserted_id} "
+            f"database={MONGO_DB_NAME} collection={collection_name}"
+        )
+
+        self._safe_register_log(
+            tipo="SISTEMA",
+            severidad="INFO",
+            mensaje="SMS request received and saved in MongoDB",
+            detalle=f"database={MONGO_DB_NAME} collection={collection_name} insertedId={inserted_id}",
+            datos_referencia={
+                "endpoint": endpoint,
+                "smsId": sms_id,
+                "database": MONGO_DB_NAME,
+                "collection": collection_name,
+                "payload": raw_payload,
+            },
+        )
+
+        errores_estructurales = []
+        errores_revision = []
+        parsed = {}
+        valores_numericos = {}
+        codigo_mesa = None
+        codigo_recinto = None
+        votos_validos = 0
+        total_votos = 0
+        resultados = {}
+        territorio_oficial = {}
+        sms_duplicado = None
+        sms_conflictivos = []
+
+        try:
+            if not numero_origen:
+                errores_estructurales.append("NUMERO_ORIGEN_NO_INFORMADO")
+
+            if not contenido_original:
+                errores_estructurales.append("CONTENIDO_SMS_REQUERIDO")
+
+            parsed = self.parse_sms_content(contenido_original)
+
+            if parsed is None:
+                errores_estructurales.append("SMS_FORMATO_INVALIDO")
+                parsed = {}
+
+            campos_requeridos = ["MESA", "P1", "P2", "P3", "P4", "BLANCOS", "NULOS"]
+
+            for campo in campos_requeridos:
+                if campo not in parsed:
+                    errores_estructurales.append(f"SMS_CAMPO_FALTANTE_{campo}")
+
+            codigo_mesa = parsed.get("MESA")
+            codigo_recinto = parsed.get("RECINTO")
+
+            for campo in ["P1", "P2", "P3", "P4", "BLANCOS", "NULOS"]:
+                valor = parsed.get(campo)
+
+                if valor is None:
+                    continue
+
+                if not re.fullmatch(r"\d+", str(valor)):
+                    errores_estructurales.append(f"SMS_VALOR_NO_NUMERICO_{campo}")
+                    continue
+
+                valores_numericos[campo] = int(valor)
+
+            votos_validos = (
+                valores_numericos.get("P1", 0)
+                + valores_numericos.get("P2", 0)
+                + valores_numericos.get("P3", 0)
+                + valores_numericos.get("P4", 0)
+            )
+
+            total_votos = (
+                votos_validos
+                + valores_numericos.get("BLANCOS", 0)
+                + valores_numericos.get("NULOS", 0)
+            )
+
+            if not errores_estructurales:
+                acta_impresa = None
+                actas_impresas_disponibles = False
+
+                try:
+                    actas_impresas_disponibles = get_actas_impresas_status().get(
+                        "actasImpresasAvailable",
+                        False,
+                    )
+                    acta_impresa = get_acta_impresa(codigo_mesa) if codigo_mesa else None
+                except Exception as error:
+                    errores_revision.append("SMS_ACTAS_IMPRESAS_NO_DISPONIBLE")
+                    self._safe_register_log(
+                        tipo="SISTEMA",
+                        severidad="WARNING",
+                        mensaje="No se pudo validar SMS contra ActasImpresas.csv",
+                        detalle=str(error),
+                        codigo_mesa=codigo_mesa,
+                        datos_referencia={"endpoint": endpoint, "smsId": sms_id},
+                    )
+
+                if actas_impresas_disponibles and codigo_mesa:
+                    if not acta_impresa:
+                        errores_revision.append("SMS_MESA_NO_EXISTE_ACTAS_IMPRESAS")
+                    else:
+                        recinto_oficial = acta_impresa.get("codigoRecinto")
+                        habilitados = acta_impresa.get("votantesHabilitados")
+
+                        if (
+                            codigo_recinto
+                            and recinto_oficial
+                            and str(codigo_recinto) != str(recinto_oficial)
+                        ):
+                            errores_revision.append("SMS_RECINTO_NO_COINCIDE_OFICIAL")
+
+                        if habilitados is not None and total_votos > int(habilitados):
+                            errores_revision.append("SMS_TOTAL_SUPERA_HABILITADOS")
+
+                try:
+                    territorio_oficial = resolve_official_territory_for_acta({
+                        "codigoMesa": codigo_mesa,
+                        "codigoRecinto": codigo_recinto,
+                        "archivo": {},
+                    })
+                except Exception as error:
+                    errores_revision.append("SMS_TERRITORIO_NO_RESUELTO")
+                    self._safe_register_log(
+                        tipo="SISTEMA",
+                        severidad="WARNING",
+                        mensaje="No se pudo resolver territorio oficial del SMS",
+                        detalle=str(error),
+                        codigo_mesa=codigo_mesa,
+                        datos_referencia={"endpoint": endpoint, "smsId": sms_id},
+                    )
+
+                contenido_normalizado = self._sms_content_signature(parsed)
+                firma_votos = self._sms_vote_signature_from_values(valores_numericos)
+                sms_previos_mesa = (
+                    self.repository.find_sms_by_codigo_mesa(codigo_mesa)
+                    if codigo_mesa
+                    else []
+                )
+
+                for sms_previo in sms_previos_mesa:
+                    if sms_previo.get("smsId") == sms_id:
+                        continue
+
+                    firma_previa = self._sms_vote_signature_from_document(sms_previo)
+                    contenido_previo = (
+                        sms_previo.get("contenidoNormalizado")
+                        or self._sms_content_signature(
+                            self.parse_sms_content(sms_previo.get("contenidoOriginal")) or {}
+                        )
+                    )
+                    numero_previo = self._normalize_sms_phone(sms_previo.get("numeroOrigen"))
+
+                    es_mismo_sms = (
+                        numero_previo == numero_origen
+                        and contenido_previo == contenido_normalizado
+                        and firma_previa == firma_votos
+                    )
+
+                    if es_mismo_sms:
+                        sms_duplicado = sms_previo
+                        break
+
+                    if (
+                        all(value is not None for value in firma_previa.values())
+                        and all(value is not None for value in firma_votos.values())
+                        and firma_previa != firma_votos
+                    ):
+                        sms_conflictivos.append(sms_previo)
+
+                if sms_duplicado:
+                    errores_revision.append("SMS_DUPLICADO")
+
+                if sms_conflictivos:
+                    errores_revision.append("CONFLICTO_SMS_MESA")
+
+            errores = errores_estructurales + errores_revision
+
+            if errores_estructurales:
+                estado = "INVALIDO"
+                status = "ERROR_PARSE"
+                processed = False
+            elif sms_duplicado:
+                estado = "DUPLICADO"
+                status = "RECIBIDO"
+                processed = True
+            elif errores_revision:
+                estado = "SOSPECHOSO"
+                status = "RECIBIDO"
+                processed = True
+            else:
+                estado = "VALIDO"
+                status = "RECIBIDO"
+                processed = True
+
+            resultados = {
+                "votosValidos": votos_validos,
+                "votosBlancos": valores_numericos.get("BLANCOS", 0),
+                "votosNulos": valores_numericos.get("NULOS", 0),
+                "totalVotos": total_votos,
+            }
+
+            datos_parseados = {
                 "p1": valores_numericos.get("P1"),
                 "p2": valores_numericos.get("P2"),
                 "p3": valores_numericos.get("P3"),
@@ -2636,56 +3142,202 @@ class ActaService:
                 "votosBlancos": valores_numericos.get("BLANCOS"),
                 "votosNulos": valores_numericos.get("NULOS"),
                 "votosValidos": votos_validos,
-                "totalVotos": total_votos
-            },
-            "validacion": {
-                "esValido": estado == "VALIDO",
-                "errores": errores,
-                "fechaValidacion": now
-            },
-            "createdAt": now,
-            "updatedAt": now
-        }
-
-        self.repository.insert_sms(sms_document)
-
-        tipo_evento = "SMS_VALIDADO" if estado == "VALIDO" else "SMS_RECHAZADO"
-
-        self.event_service.register_event(
-            tipo=tipo_evento,
-            acta_id=None,
-            codigo_mesa=codigo_mesa,
-            mensaje=f"SMS procesado con estado {estado}",
-            datos_referencia={
-                "smsId": sms_id,
-                "numeroOrigen": numero_origen,
-                "estado": estado,
-                "errores": errores
+                "totalVotos": total_votos,
             }
-        )
 
-        if estado != "VALIDO":
-            self.log_service.register_log(
-                tipo="SMS_INVALIDO",
-                severidad="WARNING",
-                mensaje="SMS RRV inválido, sospechoso o duplicado",
-                detalle=", ".join(errores),
+            datos_interpretados = None
+            if processed:
+                datos_interpretados = {
+                    "votosPartidos": [
+                        {"partidoCodigo": "P1", "cantidadVotos": valores_numericos.get("P1", 0)},
+                        {"partidoCodigo": "P2", "cantidadVotos": valores_numericos.get("P2", 0)},
+                        {"partidoCodigo": "P3", "cantidadVotos": valores_numericos.get("P3", 0)},
+                        {"partidoCodigo": "P4", "cantidadVotos": valores_numericos.get("P4", 0)},
+                    ],
+                    **resultados,
+                }
+
+            update_fields = {
+                "status": status,
+                "processed": processed,
+                "procesadoEnFlujoRRV": estado == "VALIDO",
+                "contenidoNormalizado": self._sms_content_signature(parsed),
+                "estado": estado,
+                "estadoSms": estado,
+                "codigoMesa": codigo_mesa,
+                "codigoRecinto": codigo_recinto,
+                "token": parsed.get("TOKEN"),
+                "duplicado": sms_duplicado is not None,
+                "duplicadoDeSmsId": (sms_duplicado or {}).get("smsId"),
+                "conflicto": len(sms_conflictivos) > 0,
+                "smsConflictivos": [
+                    item.get("smsId")
+                    for item in sms_conflictivos
+                    if item.get("smsId")
+                ],
+                "datosParseados": datos_parseados,
+                "datosInterpretados": datos_interpretados,
+                "resultados": resultados,
+                "territorioOficial": territorio_oficial,
+                "errores": errores,
+                "seguridad": {
+                    "numeroInformado": numero_origen is not None,
+                    "formatoValido": len(errores_estructurales) == 0,
+                    "numeroAutorizado": autorizado_servidor_pc,
+                    "numeroAsociadoMesa": len(errores_revision) == 0 if codigo_mesa else False,
+                    "numeroAsociadoRecinto": bool(codigo_recinto),
+                },
+                "validacion": {
+                    "esValido": estado == "VALIDO",
+                    "esRechazado": estado == "INVALIDO",
+                    "esInvalido": estado == "INVALIDO",
+                    "esDuplicado": estado == "DUPLICADO",
+                    "esSospechoso": estado == "SOSPECHOSO",
+                    "errores": errores,
+                    "fechaValidacion": now,
+                },
+                "updatedAt": datetime.now(timezone.utc),
+            }
+
+            self.repository.update_sms_by_id(sms_id, {"$set": update_fields})
+            sms_document.update(update_fields)
+
+            self._safe_register_event(
+                tipo="SMS_RECIBIDO",
                 acta_id=None,
                 codigo_mesa=codigo_mesa,
+                mensaje="SMS recibido en RRV",
                 datos_referencia={
+                    "endpoint": endpoint,
                     "smsId": sms_id,
                     "numeroOrigen": numero_origen,
-                    "errores": errores
-                }
+                    "fuente": sms_document["fuente"],
+                    "canal": sms_document["canal"],
+                    "database": MONGO_DB_NAME,
+                    "collection": collection_name,
+                },
             )
 
-        return {
-            "success": estado == "VALIDO",
+            tipo_evento = {
+                "VALIDO": "SMS_VALIDADO",
+                "INVALIDO": "SMS_RECHAZADO",
+                "DUPLICADO": "SMS_DUPLICADO",
+                "SOSPECHOSO": "SMS_CONFLICTO_MESA" if sms_conflictivos else "SMS_RECHAZADO",
+            }.get(estado, "SMS_RECHAZADO")
+
+            self._safe_register_event(
+                tipo=tipo_evento,
+                acta_id=None,
+                codigo_mesa=codigo_mesa,
+                mensaje=f"SMS procesado con estado {estado}",
+                datos_referencia={
+                    "endpoint": endpoint,
+                    "smsId": sms_id,
+                    "numeroOrigen": numero_origen,
+                    "estado": estado,
+                    "status": status,
+                    "errores": errores,
+                    "autorizadoServidorPc": autorizado_servidor_pc,
+                },
+            )
+
+            if estado != "VALIDO":
+                self._safe_register_log(
+                    tipo="SMS_INVALIDO",
+                    severidad="WARNING",
+                    mensaje="SMS RRV guardado con advertencias de parseo o validacion",
+                    detalle=", ".join(errores),
+                    acta_id=None,
+                    codigo_mesa=codigo_mesa,
+                    datos_referencia={
+                        "endpoint": endpoint,
+                        "smsId": sms_id,
+                        "numeroOrigen": numero_origen,
+                        "estado": estado,
+                        "status": status,
+                        "errores": errores,
+                    },
+                )
+
+            print(f"[RRV SMS] Parsed smsId={sms_id} estado={estado} status={status} errores={errores}")
+
+        except Exception as error:
+            parse_error = str(error)
+            update_fields = {
+                "status": "ERROR_PARSE",
+                "processed": False,
+                "estado": "INVALIDO",
+                "estadoSms": "INVALIDO",
+                "errores": ["SMS_PARSE_EXCEPTION"],
+                "validacion": {
+                    "esValido": False,
+                    "esRechazado": True,
+                    "esInvalido": True,
+                    "esDuplicado": False,
+                    "esSospechoso": False,
+                    "errores": ["SMS_PARSE_EXCEPTION"],
+                    "detalle": parse_error,
+                    "fechaValidacion": datetime.now(timezone.utc),
+                },
+                "updatedAt": datetime.now(timezone.utc),
+            }
+            self.repository.update_sms_by_id(sms_id, {"$set": update_fields})
+            sms_document.update(update_fields)
+
+            print(f"[RRV SMS] Parse error smsId={sms_id}: {parse_error}")
+            self._safe_register_log(
+                tipo="SMS_INVALIDO",
+                severidad="WARNING",
+                mensaje="SMS guardado pero no pudo parsearse",
+                detalle=parse_error,
+                codigo_mesa=codigo_mesa,
+                datos_referencia={
+                    "endpoint": endpoint,
+                    "smsId": sms_id,
+                    "database": MONGO_DB_NAME,
+                    "collection": collection_name,
+                    "payload": raw_payload,
+                },
+            )
+
+        data = {
             "smsId": sms_id,
-            "estado": estado,
-            "message": "SMS integrado al flujo RRV" if estado == "VALIDO" else "SMS rechazado o marcado para revisión",
-            "errores": errores,
-            "datosParseados": sms_document["datosParseados"]
+            "insertedId": inserted_id,
+            "database": MONGO_DB_NAME,
+            "collection": collection_name,
+            "sender": sms_document.get("sender"),
+            "message": sms_document.get("message"),
+            "receivedAt": sms_document.get("receivedAt"),
+            "status": sms_document.get("status"),
+            "processed": sms_document.get("processed"),
+            "estado": sms_document.get("estado"),
+            "estadoSms": sms_document.get("estadoSms"),
+            "codigoMesa": sms_document.get("codigoMesa"),
+            "codigoRecinto": sms_document.get("codigoRecinto"),
+            "duplicado": sms_document.get("duplicado"),
+            "conflicto": sms_document.get("conflicto"),
+            "errores": sms_document.get("errores", []),
+            "datosParseados": sms_document.get("datosParseados"),
+            "rawPayload": raw_payload,
+        }
+
+        serialized_data = serialize_mongo_document(data)
+
+        return {
+            "success": True,
+            "message": "SMS received and saved successfully",
+            "data": serialized_data,
+            "smsId": sms_id,
+            "codigoMesa": sms_document.get("codigoMesa"),
+            "codigoRecinto": sms_document.get("codigoRecinto"),
+            "estado": sms_document.get("estado"),
+            "estadoSms": sms_document.get("estadoSms"),
+            "status": sms_document.get("status"),
+            "processed": sms_document.get("processed"),
+            "duplicado": sms_document.get("duplicado"),
+            "conflicto": sms_document.get("conflicto"),
+            "errores": sms_document.get("errores", []),
+            "datosParseados": sms_document.get("datosParseados"),
         }
     
 
@@ -2726,6 +3378,7 @@ class ActaService:
         draft_acta = deepcopy(acta)
         draft_acta.setdefault("resultados", {})["presidente"] = resultados_presidente
         self._complete_codigo_recinto_from_actas_impresas(draft_acta)
+        self._enrich_official_territory(draft_acta)
         inconsistencias = self.calcular_inconsistencias_acta(draft_acta)
         es_duplicada = (acta.get("validacion") or {}).get("esDuplicada", False)
         es_sospechosa = es_duplicada or len(inconsistencias) > 0
@@ -3004,6 +3657,7 @@ class ActaService:
             draft_acta["datosActa"]["cantidadHabilitados"] = cantidad_habilitados_ocr
 
         self._complete_codigo_recinto_from_actas_impresas(draft_acta)
+        self._enrich_official_territory(draft_acta)
 
         draft_validacion = draft_acta.setdefault("validacion", {})
         draft_validacion["esDuplicada"] = es_duplicada_actual

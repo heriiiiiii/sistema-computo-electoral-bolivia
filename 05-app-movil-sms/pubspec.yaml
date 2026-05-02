@@ -1,0 +1,46 @@
+name: acta_electoral_app
+description: App móvil para captura y envío de actas electorales al sistema de cómputo.
+version: 1.0.0+1
+
+environment:
+  sdk: ">=3.0.0 <4.0.0"
+  flutter: ">=3.10.0"
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Captura de imagen con la cámara del dispositivo
+  image_picker: ^1.0.7
+
+  # Cliente HTTP para enviar multipart/form-data al backend
+  http: ^1.2.0
+
+  # Tipos MIME para el multipart upload (depende transitivamente de http)
+  http_parser: ^4.0.2
+
+  # Almacenamiento clave-valor para la cola offline
+  shared_preferences: ^2.2.2
+
+  # Detección de conectividad de red
+  connectivity_plus: ^5.0.2
+
+  # Generación de PDF desde imágenes
+  pdf: ^3.10.0
+
+  # Acceso a directorios del sistema de archivos del dispositivo
+  path_provider: ^2.1.2
+
+  # Utilidades de rutas de archivo
+  path: ^1.9.0
+
+  # Lanzar URLs / intents del SO: usado para abrir la app de SMS con el mensaje listo
+  url_launcher: ^6.2.5
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

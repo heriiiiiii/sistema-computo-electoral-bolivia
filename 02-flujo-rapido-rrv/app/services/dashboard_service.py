@@ -102,6 +102,9 @@ class DashboardService:
             "actasPendientes": 0,
             "actasDuplicadas": 0,
             "actasConErrorOCR": 0,
+            "actasNoPublicables": 0,
+            "inconsistenciasAbiertas": 0,
+            "incluidasDashboard": 0,
             "totalVotos": 0,
             "votosValidos": 0,
             "votosBlancos": 0,
@@ -113,22 +116,30 @@ class DashboardService:
             if not isinstance(acta, dict):
                 continue
 
+            # actasRecibidas == actasProcesadas: cada acta almacenada ya entro al
+            # pipeline RRV (recepcion + validacion + persistencia). No se usa el
+            # flag ocr.procesado porque solo refleja el subpaso OCR, que puede
+            # no aplicar (texto nativo, sin OCR, etc.) y subestima la metrica.
             r["actasRecibidas"] += 1
+            r["actasProcesadas"] += 1
+
             estado = acta.get("estado", "SIN_ESTADO")
             val = acta.get("validacion") or {}
             ocr = acta.get("ocr") or {}
             res = (acta.get("resultados") or {}).get("presidente") or {}
 
-            if ocr.get("procesado") is True:
-                r["actasProcesadas"] += 1
-            if estado == "VALIDADA":
+            if estado in ("VALIDADA", "PUBLICADA"):
                 r["actasValidadas"] += 1
-            if self._is_suspicious(acta):
+                r["incluidasDashboard"] += 1
+            if estado == "SOSPECHOSA":
                 r["actasSospechosas"] += 1
             if estado == "RECHAZADA":
                 r["actasRechazadas"] += 1
-            if estado in ("RECIBIDA", "PROCESANDO", "PENDIENTE_REVISION"):
+            if estado == "PENDIENTE_REVISION":
                 r["actasPendientes"] += 1
+            if estado in ("SOSPECHOSA", "PENDIENTE_REVISION", "RECHAZADA"):
+                r["actasNoPublicables"] += 1
+                r["inconsistenciasAbiertas"] += 1
             if val.get("esDuplicada") is True:
                 r["actasDuplicadas"] += 1
             if len(ocr.get("erroresOCR") or []) > 0:
@@ -205,7 +216,9 @@ class DashboardService:
             if not isinstance(acta, dict) or not self._is_suspicious(acta):
                 continue
             val = acta.get("validacion") or {}
-            ubi = acta.get("ubicacion") or {}
+            departamento, _prov, municipio, _recinto = (
+                self._resolve_territory_for_acta(acta)
+            )
 
             for err in val.get("errores") or []:
                 if not isinstance(err, dict):
@@ -224,8 +237,8 @@ class DashboardService:
                     "severidad": self._map_severidad(err.get("severidad", "WARNING")),
                     "estado": "ABIERTA",
                     "codigoMesa": acta.get("codigoMesa") or "SIN_MESA",
-                    "departamento": ubi.get("departamento") or "Sin departamento",
-                    "municipio": ubi.get("municipio") or "Sin municipio",
+                    "departamento": departamento,
+                    "municipio": municipio,
                     "descripcion": err.get("descripcion", codigo),
                     "fecha": self._fmt_dt(acta.get("createdAt")),
                 })
@@ -238,38 +251,107 @@ class DashboardService:
     # GET /api/rrv/dashboard/geografico
     # ------------------------------------------------------------------
 
+    @staticmethod
+    def _resolve_territory_for_acta(acta):
+        """Devuelve (departamento, provincia, municipio, recinto_nombre).
+
+        Prioridad: territorioOficial.* -> ubicacion.* -> "Sin ...".
+        Solo se usa para AGRUPAR; no cambia la acta ni su estado.
+        """
+        territorio = acta.get("territorioOficial") or {}
+        ubicacion = acta.get("ubicacion") or {}
+        recinto_oficial = territorio.get("recinto") or {}
+        recinto_ubicacion = ubicacion.get("recinto") or {}
+
+        departamento = (
+            (territorio.get("departamento") if territorio.get("resuelto") else None)
+            or ubicacion.get("departamento")
+            or "Sin departamento"
+        )
+        provincia = (
+            (territorio.get("provincia") if territorio.get("resuelto") else None)
+            or ubicacion.get("provincia")
+            or "Sin provincia"
+        )
+        municipio = (
+            (territorio.get("municipio") if territorio.get("resuelto") else None)
+            or ubicacion.get("municipio")
+            or "Sin municipio"
+        )
+        recinto_nombre = (
+            (recinto_oficial.get("nombre") if territorio.get("resuelto") else None)
+            or recinto_ubicacion.get("nombre")
+            or "Sin recinto"
+        )
+
+        return departamento, provincia, municipio, recinto_nombre
+
     def get_geografico(self):
         actas = self._load_all_actas()
         deptos = {}
 
+        def _empty_bucket(nombre):
+            return {
+                "nombre": nombre,
+                "votos": 0,
+                "actasProcesadas": 0,
+                "habilitados": 0,
+                "estados": {
+                    "VALIDADA": 0,
+                    "SOSPECHOSA": 0,
+                    "PENDIENTE_REVISION": 0,
+                    "RECHAZADA": 0,
+                    "PUBLICADA": 0,
+                },
+            }
+
         for acta in actas:
             if not isinstance(acta, dict):
                 continue
-            ubi = acta.get("ubicacion") or {}
-            d = ubi.get("departamento") or "Sin departamento"
-            if d not in deptos:
-                deptos[d] = {"votos": 0, "actas": 0, "hab": 0}
-            deptos[d]["actas"] += 1
+
+            (
+                departamento,
+                _provincia,
+                _municipio,
+                _recinto,
+            ) = self._resolve_territory_for_acta(acta)
+
+            bucket = deptos.setdefault(departamento, _empty_bucket(departamento))
+            bucket["actasProcesadas"] += 1
+
+            estado = acta.get("estado") or "SIN_ESTADO"
+            if estado in bucket["estados"]:
+                bucket["estados"][estado] += 1
+            else:
+                bucket["estados"][estado] = 1
 
             if self._is_valid_for_totals(acta):
                 res = (acta.get("resultados") or {}).get("presidente") or {}
-                deptos[d]["votos"] += int(res.get("totalVotos") or 0)
+                bucket["votos"] += int(res.get("totalVotos") or 0)
 
             hab = (acta.get("datosActa") or {}).get("cantidadHabilitados")
             if hab is not None:
-                deptos[d]["hab"] += int(hab)
+                try:
+                    bucket["habilitados"] += int(hab)
+                except (TypeError, ValueError):
+                    pass
 
         result = []
         for idx, (nombre, data) in enumerate(sorted(deptos.items()), 1):
-            part = round((data["votos"] / data["hab"]) * 100, 1) if data["hab"] > 0 else 0
+            participacion = (
+                round((data["votos"] / data["habilitados"]) * 100, 1)
+                if data["habilitados"] > 0
+                else 0
+            )
             result.append({
                 "id": f"GEO-{idx:02d}",
                 "nivel": "DEPARTAMENTO",
                 "nombre": nombre,
                 "departamento": nombre,
                 "votosRRV": data["votos"],
-                "actasProcesadas": data["actas"],
-                "participacion": part,
+                "actasProcesadas": data["actasProcesadas"],
+                "participacion": participacion,
+                "estados": data["estados"],
             })
         return result
 
@@ -404,14 +486,15 @@ class DashboardService:
         for acta in actas:
             if not isinstance(acta, dict):
                 continue
-            ubi = acta.get("ubicacion") or {}
-            recinto = ubi.get("recinto") or {}
+            departamento, _prov, municipio, recinto = (
+                self._resolve_territory_for_acta(acta)
+            )
             items.append({
                 "id": acta.get("actaId", "SIN_ID"),
                 "codigoMesa": acta.get("codigoMesa") or "SIN_MESA",
-                "recinto": recinto.get("nombre") or "Sin recinto",
-                "municipio": ubi.get("municipio") or "Sin municipio",
-                "departamento": ubi.get("departamento") or "Sin departamento",
+                "recinto": recinto,
+                "municipio": municipio,
+                "departamento": departamento,
                 "fuente": "RRV",
                 "estado": acta.get("estado", "SIN_ESTADO"),
                 "fecha": self._fmt_dt(acta.get("createdAt")),
@@ -430,13 +513,16 @@ class DashboardService:
         validadas = resumen["actasValidadas"]
         procesadas = resumen["actasProcesadas"]
         sospechosas = resumen["actasSospechosas"]
+        pendientes = resumen["actasPendientes"]
         rechazadas = resumen["actasRechazadas"]
+        no_publicables = resumen["actasNoPublicables"]
+        inconsistencias_abiertas = resumen["inconsistenciasAbiertas"]
 
         confiabilidad = 0
         if procesadas > 0:
             confiabilidad = round(
                 ((validadas / procesadas) * 100)
-                - ((sospechosas + rechazadas) / max(procesadas, 1)) * 10,
+                - (no_publicables / max(procesadas, 1)) * 10,
                 1,
             )
             confiabilidad = max(0, min(100, confiabilidad))
@@ -461,9 +547,12 @@ class DashboardService:
             {
                 "id": "inconsistencias",
                 "titulo": "Inconsistencias abiertas",
-                "valor": sospechosas,
-                "descripcion": "Actas sospechosas pendientes de revisión",
-                "estado": "ALERTA" if sospechosas > 0 else "POSITIVO",
+                "valor": inconsistencias_abiertas,
+                "descripcion": (
+                    f"Sospechosas ({sospechosas}) + pendientes de revisión "
+                    f"({pendientes}) + rechazadas ({rechazadas})"
+                ),
+                "estado": "ALERTA" if inconsistencias_abiertas > 0 else "POSITIVO",
             },
             {
                 "id": "procesadas",

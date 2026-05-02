@@ -622,15 +622,20 @@ export class OficialService {
     const totalesActas = actas.rows.reduce((acc, r) => { acc[r.estado] = parseInt(r.total); return acc; }, {} as any);
     const totalActas = Object.values(totalesActas).reduce((a: any, b: any) => a + b, 0);
 
-    const votosValidos = await dbQuery(this.pool,
-      'SELECT SUM(votos_validos) AS total FROM actas_oficiales WHERE estado IN (\'VALIDADA\',\'OFICIALIZADA\')'
-    );
-    const votosBlancos = await dbQuery(this.pool,
-      'SELECT SUM(votos_blancos) AS total FROM actas_oficiales WHERE estado IN (\'VALIDADA\',\'OFICIALIZADA\')'
-    );
-    const votosNulos = await dbQuery(this.pool,
-      'SELECT SUM(votos_nulos) AS total FROM actas_oficiales WHERE estado IN (\'VALIDADA\',\'OFICIALIZADA\')'
-    );
+    // Las actas en OBSERVADA tienen votos persistidos válidos (validacion.ts solo
+    // detecta inconsistencias internas, no impide computar). El frontend separa
+    // validadas de observadas por estado, pero los totales nacionales deben
+    // incluir ambas para no mostrar 0 mientras se revisan.
+    const votosAgg = await dbQuery(this.pool, `
+      SELECT
+        COALESCE(SUM(votos_validos), 0) AS validos,
+        COALESCE(SUM(votos_blancos), 0) AS blancos,
+        COALESCE(SUM(votos_nulos),   0) AS nulos,
+        COALESCE(SUM(total_votos),   0) AS total
+      FROM actas_oficiales
+      WHERE estado IN ('VALIDADA','OBSERVADA','OFICIALIZADA')
+    `);
+    const v = votosAgg.rows[0];
 
     return {
       actas: {
@@ -638,9 +643,10 @@ export class OficialService {
         porEstado: totalesActas,
       },
       votos: {
-        validos: parseInt(votosValidos.rows[0].total) || 0,
-        blancos: parseInt(votosBlancos.rows[0].total) || 0,
-        nulos: parseInt(votosNulos.rows[0].total) || 0,
+        validos:    parseInt(v.validos) || 0,
+        blancos:    parseInt(v.blancos) || 0,
+        nulos:      parseInt(v.nulos)   || 0,
+        totalVotos: parseInt(v.total)   || 0,
       },
       porPartido: partidos.rows,
       importaciones: importaciones.rows,

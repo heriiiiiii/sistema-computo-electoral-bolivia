@@ -6,6 +6,7 @@ import {
   LayoutDashboard,
   MapPinned,
   ShieldCheck,
+  Trophy,
   X
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
@@ -24,6 +25,7 @@ interface NavItem {
 
 const NAV_ITEMS: NavItem[] = [
   { to: '/', label: 'Inicio', icon: LayoutDashboard },
+  { to: '/ganador', label: 'Ganador', icon: Trophy },
   { to: '/comparacion', label: 'Comparación', icon: GitCompare },
   { to: '/actas', label: 'Actas', icon: FileText },
   { to: '/inconsistencias', label: 'Inconsistencias', icon: AlertTriangle },

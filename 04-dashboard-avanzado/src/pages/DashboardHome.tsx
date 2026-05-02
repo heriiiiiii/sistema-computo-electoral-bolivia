@@ -3,9 +3,11 @@ import {
   AlertTriangle,
   CheckCircle2,
   ClipboardCheck,
+  Clock,
   Database,
   FileCheck2,
   FileStack,
+  FileWarning,
   RadioTower,
   ShieldAlert,
   Vote,
@@ -125,7 +127,15 @@ export default function DashboardHome() {
         <SummaryCard
           title="Actas RRV sospechosas"
           value={formatNumber(resumen.rrv.actasSospechosas)}
+          description="Estado SOSPECHOSA"
           icon={<ShieldAlert />}
+          status="warning"
+        />
+        <SummaryCard
+          title="Actas RRV pendientes"
+          value={formatNumber(resumen.rrv.actasPendientes)}
+          description="Pendientes de revisión manual"
+          icon={<Clock />}
           status="warning"
         />
         <SummaryCard
@@ -133,6 +143,13 @@ export default function DashboardHome() {
           value={formatNumber(resumen.rrv.actasRechazadas)}
           icon={<XCircle />}
           status="danger"
+        />
+        <SummaryCard
+          title="Actas RRV no publicables"
+          value={formatNumber(resumen.rrv.actasNoPublicables)}
+          description="Sospechosas + pendientes + rechazadas"
+          icon={<FileWarning />}
+          status="warning"
         />
         <SummaryCard
           title="Actas oficiales importadas"
